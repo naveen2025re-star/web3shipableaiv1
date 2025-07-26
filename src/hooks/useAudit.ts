@@ -125,7 +125,7 @@ export function useAudit() {
                           extractBulletContent(vulnSection, 'Technical Analysis') ||
                           extractBulletContent(vulnSection, 'Description');
 
-        const proofOfConcept = extractBulletContent(vulnSection, 'Proof of Concept') ||
+        let proofOfConcept = extractBulletContent(vulnSection, 'Proof of Concept') ||
                              extractBulletContent(vulnSection, 'Evidence & Justification') ||
                              extractBulletContent(vulnSection, 'Attack Scenario');
 
