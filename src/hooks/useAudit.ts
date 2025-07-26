@@ -37,12 +37,26 @@ export function useAudit() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  const extractSection = (text: string, patterns: string[]): { content: string; remaining: string } => {
-    for (const pattern of patterns) {
-      const regex = new RegExp(pattern, 'is');
+  // Helper function to extract specific sections with precise boundaries
+  const extractSpecificSection = (
+    text: string, 
+    sectionPatterns: string[], 
+    nextSectionPatterns: string[] = []
+  ): { content: string; remaining: string } => {
+    for (const pattern of sectionPatterns) {
+      // Create regex that matches the section header and captures content until next section or end
+      const nextPattern = nextSectionPatterns.length > 0 
+        ? `(?=(?:${nextSectionPatterns.join('|')}))`
+        : '$';
+      
+      const regex = new RegExp(
+        `(?:^|\\n)\\s*(?:\\*\\*|##?\\s*|###\\s*)?${pattern}\\s*(?:\\*\\*)?\\s*:?\\s*\\n?([\\s\\S]*?)(?=${nextPattern})`,
+        'im'
+      );
+      
       const match = text.match(regex);
-      if (match) {
-        const content = match[1]?.trim() || '';
+      if (match && match[1]) {
+        const content = match[1].trim();
         const remaining = text.replace(match[0], '').trim();
         return { content, remaining };
       }
@@ -50,11 +64,12 @@ export function useAudit() {
     return { content: '', remaining: text };
   };
 
+  // Helper function to extract all code blocks from text
   const extractCodeBlocks = (text: string): { code: string; remaining: string } => {
     const codeBlocks: string[] = [];
     let remaining = text;
     
-    // Extract all code blocks
+    // Extract all code blocks (```...``` format)
     const codeBlockRegex = /```[\w]*\n?([\s\S]*?)\n?```/g;
     let match;
     
@@ -71,13 +86,52 @@ export function useAudit() {
     };
   };
 
+  // Helper function to clean text content
   const cleanText = (text: string): string => {
     return text
       .replace(/^\s*[-*]\s*/gm, '') // Remove bullet points
       .replace(/^\s*\d+\.\s*/gm, '') // Remove numbered lists
       .replace(/^\s*#+\s*/gm, '') // Remove markdown headers
+      .replace(/\*\*(.*?)\*\*/g, '$1') // Remove bold formatting
       .replace(/\n\s*\n\s*\n/g, '\n\n') // Normalize multiple newlines
       .trim();
+  };
+
+  // Helper function to extract severity from text
+  const extractSeverity = (text: string): { severity: Finding['severity']; remaining: string } => {
+    const severityPatterns = [
+      'severity[:\\s]*([^\\n]+)',
+      'risk\\s*level[:\\s]*([^\\n]+)',
+      'priority[:\\s]*([^\\n]+)'
+    ];
+
+    for (const pattern of severityPatterns) {
+      const regex = new RegExp(pattern, 'i');
+      const match = text.match(regex);
+      if (match && match[1]) {
+        const severityText = match[1].toLowerCase().trim();
+        let severity: Finding['severity'] = 'Medium';
+        
+        if (severityText.includes('critical')) severity = 'Critical';
+        else if (severityText.includes('high')) severity = 'High';
+        else if (severityText.includes('medium')) severity = 'Medium';
+        else if (severityText.includes('low')) severity = 'Low';
+        else if (severityText.includes('info')) severity = 'Informational';
+        
+        const remaining = text.replace(match[0], '').trim();
+        return { severity, remaining };
+      }
+    }
+
+    // Fallback: scan entire text for severity keywords
+    const textLower = text.toLowerCase();
+    let severity: Finding['severity'] = 'Medium';
+    if (textLower.includes('critical')) severity = 'Critical';
+    else if (textLower.includes('high')) severity = 'High';
+    else if (textLower.includes('low')) severity = 'Low';
+    else if (textLower.includes('info')) severity = 'Informational';
+
+    return { severity, remaining: text };
   };
 
   const parseAuditResponse = (response: string): { content: string; summary: AuditSummary; findings: Finding[] } => {
@@ -90,12 +144,12 @@ export function useAudit() {
 
     // Enhanced patterns to find vulnerability sections
     const findingPatterns = [
-      // Pattern 1: Standard finding headers
-      /(?:##?\s*)?(?:FINDING|Finding|Vulnerability)\s*(?:\d+)?[:\-\s]*([^\n]+)([\s\S]*?)(?=(?:##?\s*(?:FINDING|Finding|Vulnerability)|\n##|\n#\s|$))/gi,
-      // Pattern 2: Numbered findings
-      /(\d+\.\s*[^#\n]+)([\s\S]*?)(?=(?:\d+\.\s*|\n##|\n#\s|$))/gi,
-      // Pattern 3: Name/Type format
-      /(?:Name\/Type|Title)[:\s]*([^\n]+)([\s\S]*?)(?=(?:Name\/Type|Title|\n##|\n#\s|$))/gi
+      // Pattern 1: Standard finding headers with various formats
+      /(?:##?\s*)?(?:FINDING|Finding|Vulnerability|Issue|Problem)\s*(?:\d+)?[:\-\s]*([^\n]+)([\s\S]*?)(?=(?:##?\s*(?:FINDING|Finding|Vulnerability|Issue|Problem)|\n##|\n#\s|$))/gi,
+      // Pattern 2: Name/Type format
+      /(?:Name\/Type|Title|Vulnerability\s*Name)[:\s]*([^\n]+)([\s\S]*?)(?=(?:Name\/Type|Title|Vulnerability\s*Name|\n##|\n#\s|$))/gi,
+      // Pattern 3: Numbered findings
+      /(\d+\.\s*[^#\n]+)([\s\S]*?)(?=(?:\d+\.\s*|\n##|\n#\s|$))/gi
     ];
 
     let foundFindings = false;
@@ -110,93 +164,128 @@ export function useAudit() {
           const title = match[1]?.trim() || 'Security Finding';
           let sectionContent = match[2]?.trim() || '';
 
-          // Extract severity first
-          const severityExtraction = extractSection(sectionContent, [
-            'severity[:\s]*([^\n]+)',
-            'risk[:\s]*([^\n]+)',
-            '(?:critical|high|medium|low|informational)'
-          ]);
-          
-          let severity: Finding['severity'] = 'Medium';
-          if (severityExtraction.content) {
-            const sev = severityExtraction.content.toLowerCase();
-            if (sev.includes('critical')) severity = 'Critical';
-            else if (sev.includes('high')) severity = 'High';
-            else if (sev.includes('medium')) severity = 'Medium';
-            else if (sev.includes('low')) severity = 'Low';
-            else if (sev.includes('info')) severity = 'Informational';
-          } else {
-            // Fallback: check entire section for severity keywords
-            const sev = sectionContent.toLowerCase();
-            if (sev.includes('critical')) severity = 'Critical';
-            else if (sev.includes('high')) severity = 'High';
-            else if (sev.includes('low')) severity = 'Low';
-            else if (sev.includes('info')) severity = 'Informational';
+          // Step 1: Extract severity
+          const { severity, remaining: afterSeverity } = extractSeverity(sectionContent);
+          sectionContent = afterSeverity;
+
+          // Step 2: Extract vulnerable code (before other sections to avoid contamination)
+          const vulnerableCodeExtraction = extractSpecificSection(
+            sectionContent,
+            ['Vulnerable Code', 'Code Snippet', 'Affected Code', 'Code', 'Contract Code'],
+            ['Technical Analysis', 'Explanation', 'Analysis', 'Proof of Concept', 'PoC', 'Remediation', 'Recommendation', 'References', 'Impact']
+          );
+          let vulnerableCode = vulnerableCodeExtraction.content;
+          sectionContent = vulnerableCodeExtraction.remaining;
+
+          // Extract code blocks from vulnerable code section
+          if (vulnerableCode) {
+            const codeExtraction = extractCodeBlocks(vulnerableCode);
+            vulnerableCode = codeExtraction.code || cleanText(vulnerableCode);
           }
-          
-          sectionContent = severityExtraction.remaining;
 
-          // Extract vulnerable code blocks
-          const codeExtraction = extractCodeBlocks(sectionContent);
-          const vulnerableCode = codeExtraction.code;
-          sectionContent = codeExtraction.remaining;
-
-          // Extract impact
-          const impactExtraction = extractSection(sectionContent, [
-            'impact[:\s]*([^\n]+(?:\n(?!(?:proof|remediation|reference|explanation|technical))[^\n]*)*)',
-            'description[:\s]*([^\n]+(?:\n(?!(?:proof|remediation|reference|explanation|technical))[^\n]*)*)'
-          ]);
-          const impact = impactExtraction.content || 'Impact assessment needed';
-          sectionContent = impactExtraction.remaining;
-
-          // Extract proof of concept
-          const pocExtraction = extractSection(sectionContent, [
-            'proof\\s*of\\s*concept[:\s]*([\s\S]*?)(?=(?:remediation|recommendation|reference|technical|explanation|$))',
-            'poc[:\s]*([\s\S]*?)(?=(?:remediation|recommendation|reference|technical|explanation|$))',
-            'exploit[:\s]*([\s\S]*?)(?=(?:remediation|recommendation|reference|technical|explanation|$))'
-          ]);
-          const proofOfConcept = pocExtraction.content;
+          // Step 3: Extract proof of concept
+          const pocExtraction = extractSpecificSection(
+            sectionContent,
+            ['Proof of Concept', 'PoC', 'Exploit', 'Attack Scenario', 'Exploitation'],
+            ['Remediation', 'Recommendation', 'Fix', 'Solution', 'References', 'Technical Analysis', 'Explanation', 'Analysis', 'Impact']
+          );
+          let proofOfConcept = pocExtraction.content;
           sectionContent = pocExtraction.remaining;
 
-          // Extract remediation
-          const remediationExtraction = extractSection(sectionContent, [
-            'remediation[:\s]*([\s\S]*?)(?=(?:reference|technical|explanation|$))',
-            'recommendation[:\s]*([\s\S]*?)(?=(?:reference|technical|explanation|$))',
-            'fix[:\s]*([\s\S]*?)(?=(?:reference|technical|explanation|$))',
-            'solution[:\s]*([\s\S]*?)(?=(?:reference|technical|explanation|$))'
-          ]);
-          const remediation = remediationExtraction.content;
+          // Clean PoC content
+          if (proofOfConcept) {
+            const pocCodeExtraction = extractCodeBlocks(proofOfConcept);
+            if (pocCodeExtraction.code) {
+              proofOfConcept = pocCodeExtraction.code + '\n\n' + cleanText(pocCodeExtraction.remaining);
+            } else {
+              proofOfConcept = cleanText(proofOfConcept);
+            }
+          }
+
+          // Step 4: Extract remediation
+          const remediationExtraction = extractSpecificSection(
+            sectionContent,
+            ['Remediation', 'Recommendation', 'Fix', 'Solution', 'Mitigation', 'Prevention'],
+            ['References', 'Links', 'CVE', 'SWC', 'Technical Analysis', 'Explanation', 'Analysis', 'Impact']
+          );
+          let remediation = remediationExtraction.content;
           sectionContent = remediationExtraction.remaining;
 
-          // Extract references
-          const referencesExtraction = extractSection(sectionContent, [
-            'reference[s]?[:\s]*([\s\S]*?)(?=(?:technical|explanation|$))',
-            'link[s]?[:\s]*([\s\S]*?)(?=(?:technical|explanation|$))',
-            'cve[:\s]*([\s\S]*?)(?=(?:technical|explanation|$))',
-            'swc[:\s]*([\s\S]*?)(?=(?:technical|explanation|$))'
-          ]);
-          const references = referencesExtraction.content;
+          // Clean remediation content
+          if (remediation) {
+            const remCodeExtraction = extractCodeBlocks(remediation);
+            if (remCodeExtraction.code) {
+              remediation = cleanText(remCodeExtraction.remaining) + '\n\n```solidity\n' + remCodeExtraction.code + '\n```';
+            } else {
+              remediation = cleanText(remediation);
+            }
+          }
+
+          // Step 5: Extract references
+          const referencesExtraction = extractSpecificSection(
+            sectionContent,
+            ['References', 'Links', 'CVE', 'SWC', 'External Links', 'Documentation'],
+            ['Technical Analysis', 'Explanation', 'Analysis', 'Impact']
+          );
+          const references = referencesExtraction.content ? cleanText(referencesExtraction.content) : '';
           sectionContent = referencesExtraction.remaining;
 
-          // Extract technical analysis/explanation
-          const explanationExtraction = extractSection(sectionContent, [
-            'technical\\s*analysis[:\s]*([\s\S]*?)$',
-            'explanation[:\s]*([\s\S]*?)$',
-            'analysis[:\s]*([\s\S]*?)$'
-          ]);
+          // Step 6: Extract technical analysis/explanation
+          const explanationExtraction = extractSpecificSection(
+            sectionContent,
+            ['Technical Analysis', 'Explanation', 'Analysis', 'Details', 'Description'],
+            ['Impact']
+          );
+          let explanation = explanationExtraction.content;
+          sectionContent = explanationExtraction.remaining;
+
+          // Clean explanation content
+          if (explanation) {
+            const expCodeExtraction = extractCodeBlocks(explanation);
+            if (expCodeExtraction.code) {
+              explanation = cleanText(expCodeExtraction.remaining) + '\n\n```solidity\n' + expCodeExtraction.code + '\n```';
+            } else {
+              explanation = cleanText(explanation);
+            }
+          }
+
+          // Step 7: Extract impact (use remaining content or look for specific impact section)
+          const impactExtraction = extractSpecificSection(
+            sectionContent,
+            ['Impact', 'Effect', 'Consequence', 'Risk'],
+            []
+          );
+          let impact = impactExtraction.content;
           
-          // If no explicit technical analysis section, use remaining content
-          const explanation = explanationExtraction.content || cleanText(sectionContent) || 'Technical analysis needed';
+          // If no specific impact section found, use remaining content as impact
+          if (!impact && sectionContent) {
+            impact = cleanText(sectionContent);
+          }
+          
+          // Fallback impact
+          if (!impact) {
+            impact = 'Security vulnerability identified - impact assessment needed';
+          } else {
+            impact = cleanText(impact);
+          }
+
+          // Ensure we have meaningful content for explanation
+          if (!explanation && sectionContent) {
+            explanation = cleanText(sectionContent);
+          }
+          if (!explanation) {
+            explanation = 'Technical analysis needed for this vulnerability';
+          }
 
           findings.push({
             vulnerabilityName: title,
             severity,
             impact,
-            vulnerableCode,
+            vulnerableCode: vulnerableCode || '',
             explanation,
-            proofOfConcept,
-            remediation,
-            references
+            proofOfConcept: proofOfConcept || '',
+            remediation: remediation || '',
+            references: references || ''
           });
         });
         
@@ -206,23 +295,17 @@ export function useAudit() {
 
     // Fallback: create a general finding if no structured findings found
     if (!foundFindings && cleanContent.length > 50) {
-      let severity: Finding['severity'] = 'Medium';
-      const content = cleanContent.toLowerCase();
-      if (content.includes('critical')) severity = 'Critical';
-      else if (content.includes('high')) severity = 'High';
-      else if (content.includes('low')) severity = 'Low';
-      else if (content.includes('info')) severity = 'Informational';
-
+      const { severity } = extractSeverity(cleanContent);
       const codeExtraction = extractCodeBlocks(cleanContent);
       
       findings.push({
-        vulnerabilityName: 'Security Analysis',
+        vulnerabilityName: 'Security Analysis Report',
         severity,
-        impact: 'Security assessment completed',
+        impact: 'Comprehensive security assessment completed',
         vulnerableCode: codeExtraction.code,
         explanation: cleanText(codeExtraction.remaining) || cleanContent,
         proofOfConcept: '',
-        remediation: '',
+        remediation: 'Review the analysis and implement recommended security measures',
         references: ''
       });
     }
