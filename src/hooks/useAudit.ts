@@ -85,7 +85,8 @@ export function useAudit() {
       content: cleanContent,
       summary
     };
-  }
+  };
+
   const performAudit = async (code: string, description: string, fileName?: string, fileCount?: number) => {
     setIsLoading(true);
     
