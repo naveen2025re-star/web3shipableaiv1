@@ -85,6 +85,18 @@ export function useAudit() {
     return { extracted: '', remaining: text };
   };
 
+  // Helper function to remove specific patterns from text
+  const removeSpecificPatterns = (text: string, patterns: RegExp[]): string => {
+    if (!text || typeof text !== 'string') return '';
+    
+    let cleanedText = text;
+    patterns.forEach(pattern => {
+      cleanedText = cleanedText.replace(pattern, '');
+    });
+    
+    return cleanedText.trim();
+  };
+
   // Helper function to extract code blocks
   const extractCodeBlocks = (text: string): string => {
     const codeBlockRegex = /```[\w]*\n?([\s\S]*?)\n?```/g;
@@ -119,6 +131,14 @@ export function useAudit() {
     if (!text || typeof text !== 'string') return '';
     
     return text
+      // Convert non-standard bullet points to markdown format
+      .replace(/•\s*/g, '- ')
+      .replace(/◦\s*/g, '  - ')
+      .replace(/▪\s*/g, '- ')
+      // Remove redundant headers that appear in content
+      .replace(/^\s*(?:vulnerable\s*code\s*snippet|technical\s*analysis|proof\s*of\s*concept|recommended\s*remediation)\s*:?\s*$/gmi, '')
+      // Remove standalone severity indicators
+      .replace(/^\s*(?:severity|risk\s*level|priority)\s*:\s*(?:critical|high|medium|low|informational)\s*$/gmi, '')
       // Add proper line breaks after sentences
       .replace(/\. ([A-Z])/g, '.\n\n$1')
       // Ensure proper spacing around headers
@@ -128,6 +148,10 @@ export function useAudit() {
       // Ensure proper list formatting
       .replace(/^(\d+\.\s+)/gm, '\n$1')
       .replace(/^([-*+]\s+)/gm, '\n$1')
+      // Improve spacing around code references
+      .replace(/(`[^`]+`)/g, ' $1 ')
+      // Clean up multiple spaces
+      .replace(/\s{3,}/g, '  ')
       // Add spacing around code blocks
       .replace(/```/g, '\n```\n')
       // Normalize excessive whitespace while preserving intentional breaks
