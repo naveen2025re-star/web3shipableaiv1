@@ -382,11 +382,11 @@ export function useAudit() {
         findings.push({
           vulnerabilityName: 'Smart Contract Security Analysis',
           severity,
-          impact: '**Security Assessment:** Comprehensive analysis completed with findings detailed below.',
+          impact: '**Security Assessment:** Comprehensive security analysis completed with detailed findings and recommendations.',
           vulnerableCode: codeBlocks,
           explanation: improveMarkdownFormatting(cleanContent.replace(/```[\s\S]*?```/g, '')),
           proofOfConcept: '',
-          remediation: '**Action Required:**\n\nReview the analysis above and implement the recommended security measures to address identified concerns.',
+          remediation: '**Recommended Actions:**\n\n1. Review the detailed analysis above\n2. Implement the suggested security measures\n3. Consider additional testing and validation\n4. Follow smart contract security best practices',
           references: ''
         });
       }
