@@ -254,7 +254,7 @@ export function useAudit() {
             ],
             sectionEndPatterns
           );
-          const impact = cleanMarkdown(impactResult.extracted);
+          const impact = improveMarkdownFormatting(impactResult.extracted);
           remainingText = impactResult.remaining;
 
           // Extract Vulnerable Code
@@ -271,7 +271,7 @@ export function useAudit() {
           remainingText = codeResult.remaining;
 
           // What's left is the explanation/technical analysis
-          const explanation = cleanMarkdown(remainingText) || 'Technical analysis required';
+          const explanation = improveMarkdownFormatting(remainingText) || 'Technical analysis required';
 
           // Extract CVE/SWC IDs
           const cveMatch = findingText.match(/CVE-\d{4}-\d{4,}/);
@@ -280,12 +280,12 @@ export function useAudit() {
           findings.push({
             vulnerabilityName,
             severity,
-            impact: impact || 'Security vulnerability identified',
+            impact: impact || '**Security Impact:** Vulnerability identified that requires attention.',
             vulnerableCode,
-            explanation,
-            proofOfConcept,
-            remediation: remediation || 'Review the technical analysis for remediation guidance',
-            references,
+            explanation: explanation,
+            proofOfConcept: improveMarkdownFormatting(proofOfConcept),
+            remediation: improveMarkdownFormatting(remediation) || '**Remediation Steps:**\n\nReview the technical analysis above for specific remediation guidance and implement appropriate security measures.',
+            references: improveMarkdownFormatting(references),
             cveId: cveMatch ? cveMatch[0] : undefined,
             swcId: swcMatch ? swcMatch[0] : undefined
           });
@@ -336,11 +336,11 @@ export function useAudit() {
         findings.push({
           vulnerabilityName: 'Smart Contract Security Analysis',
           severity,
-          impact: 'Comprehensive security assessment completed',
+          impact: '**Security Assessment:** Comprehensive analysis completed with findings detailed below.',
           vulnerableCode: codeBlocks,
-          explanation: cleanMarkdown(cleanContent.replace(/```[\s\S]*?```/g, '')),
+          explanation: improveMarkdownFormatting(cleanContent.replace(/```[\s\S]*?```/g, '')),
           proofOfConcept: '',
-          remediation: 'Review the analysis and implement recommended security measures',
+          remediation: '**Action Required:**\n\nReview the analysis above and implement the recommended security measures to address identified concerns.',
           references: ''
         });
       }
