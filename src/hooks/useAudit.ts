@@ -178,35 +178,35 @@ export function useAudit() {
         // Pattern 2: "Vulnerability Name/Type:" format
         else {
           const vulnNameMatch = section.match(/(?:Vulnerability Name\/Type|Vulnerability|Issue|Problem):\s*([^\n]+)/i);
-        if (vulnNameMatch) {
-          vulnerabilityName = vulnNameMatch[1].trim();
-        }
-        // Pattern 3: Numbered section headers
-        else {
-          const numberedMatch = section.match(/(?:^|\n)\s*(?:\d+\.|##\s*\d+\.|#\s*\d+\.|\*\*\d+\.\*\*)\s*([^\n]+)/);
-          if (numberedMatch) {
-            vulnerabilityName = numberedMatch[1].trim();
+          if (vulnNameMatch) {
+            vulnerabilityName = vulnNameMatch[1].trim();
           }
-          // Pattern 4: FINDING headers
+          // Pattern 3: Numbered section headers
           else {
-            const findingMatch = section.match(/(?:## FINDING|# FINDING|FINDING \d+|Finding \d+):\s*([^\n]+)/i);
-            if (findingMatch) {
-              vulnerabilityName = findingMatch[1].trim();
+            const numberedMatch = section.match(/(?:^|\n)\s*(?:\d+\.|##\s*\d+\.|#\s*\d+\.|\*\*\d+\.\*\*)\s*([^\n]+)/);
+            if (numberedMatch) {
+              vulnerabilityName = numberedMatch[1].trim();
             }
-            // Pattern 5: First meaningful line
+            // Pattern 4: FINDING headers
             else {
-              const lines = section.split('\n').filter(line => line.trim());
-              if (lines.length > 0) {
-                let firstLine = lines[0].trim();
-                // Clean up common prefixes
-                firstLine = firstLine.replace(/^(?:##\s*|#\s*|\*\*|\d+\.\s*|FINDING\s*\d*:?\s*)/i, '');
-                if (firstLine.length > 5) {
-                  vulnerabilityName = firstLine;
+              const findingMatch = section.match(/(?:## FINDING|# FINDING|FINDING \d+|Finding \d+):\s*([^\n]+)/i);
+              if (findingMatch) {
+                vulnerabilityName = findingMatch[1].trim();
+              }
+              // Pattern 5: First meaningful line
+              else {
+                const lines = section.split('\n').filter(line => line.trim());
+                if (lines.length > 0) {
+                  let firstLine = lines[0].trim();
+                  // Clean up common prefixes
+                  firstLine = firstLine.replace(/^(?:##\s*|#\s*|\*\*|\d+\.\s*|FINDING\s*\d*:?\s*)/i, '');
+                  if (firstLine.length > 5) {
+                    vulnerabilityName = firstLine;
+                  }
                 }
               }
             }
           }
-        }
         }
         
         // Clean up vulnerability name
@@ -282,46 +282,48 @@ export function useAudit() {
         // Pattern 2: Direct severity statements
         else {
           const directSeverityMatch = section.match(/(?:^|\n)\s*(?:Severity|Risk Level|Priority):\s*(Critical|High|Medium|Low|Informational)/i);
-        if (directSeverityMatch) {
-          severity = directSeverityMatch[1] as Finding['severity'];
-        }
-        // Pattern 3: Bullet point format
-        const bulletSeverityMatch = section.match(/[•\-\*]\s*(?:Severity|Risk Level|Priority):\s*(Critical|High|Medium|Low|Informational)/i);
-        if (bulletSeverityMatch) {
-          severity = bulletSeverityMatch[1] as Finding['severity'];
-        }
-        // Pattern 4: Alternative structured format
-        else {
-          const altStructuredMatch = section.match(/\*\*(?:Severity|Risk Level|Priority)\*\*:\s*(Critical|High|Medium|Low|Informational)/i);
-          if (altStructuredMatch) {
-            severity = altStructuredMatch[1] as Finding['severity'];
+          if (directSeverityMatch) {
+            severity = directSeverityMatch[1] as Finding['severity'];
           }
-          // Pattern 5: Severity in section headers
+          // Pattern 3: Bullet point format
           else {
-            const headerSeverityMatch = section.match(/(?:Critical|High|Medium|Low|Informational)\s*(?:Severity|Risk|Priority|Vulnerability)/i);
-            if (headerSeverityMatch) {
-              const severityText = headerSeverityMatch[0].match(/(Critical|High|Medium|Low|Informational)/i);
-              if (severityText) {
-                severity = severityText[1] as Finding['severity'];
-              }
+            const bulletSeverityMatch = section.match(/[•\-\*]\s*(?:Severity|Risk Level|Priority):\s*(Critical|High|Medium|Low|Informational)/i);
+            if (bulletSeverityMatch) {
+              severity = bulletSeverityMatch[1] as Finding['severity'];
             }
-            // Pattern 6: Content-based detection with better keywords
+            // Pattern 4: Alternative structured format
             else {
-              const lowerSection = section.toLowerCase();
-              if (lowerSection.includes('critical vulnerability') || lowerSection.includes('critical risk') || lowerSection.includes('critical severity')) {
-                severity = 'Critical';
-              } else if (lowerSection.includes('high vulnerability') || lowerSection.includes('high risk') || lowerSection.includes('high severity')) {
-                severity = 'High';
-              } else if (lowerSection.includes('medium vulnerability') || lowerSection.includes('medium risk') || lowerSection.includes('medium severity')) {
-                severity = 'Medium';
-              } else if (lowerSection.includes('low vulnerability') || lowerSection.includes('low risk') || lowerSection.includes('low severity')) {
-                severity = 'Low';
-              } else if (lowerSection.includes('informational') || lowerSection.includes('info')) {
-                severity = 'Informational';
+              const altStructuredMatch = section.match(/\*\*(?:Severity|Risk Level|Priority)\*\*:\s*(Critical|High|Medium|Low|Informational)/i);
+              if (altStructuredMatch) {
+                severity = altStructuredMatch[1] as Finding['severity'];
+              }
+              // Pattern 5: Severity in section headers
+              else {
+                const headerSeverityMatch = section.match(/(?:Critical|High|Medium|Low|Informational)\s*(?:Severity|Risk|Priority|Vulnerability)/i);
+                if (headerSeverityMatch) {
+                  const severityText = headerSeverityMatch[0].match(/(Critical|High|Medium|Low|Informational)/i);
+                  if (severityText) {
+                    severity = severityText[1] as Finding['severity'];
+                  }
+                }
+                // Pattern 6: Content-based detection with better keywords
+                else {
+                  const lowerSection = section.toLowerCase();
+                  if (lowerSection.includes('critical vulnerability') || lowerSection.includes('critical risk') || lowerSection.includes('critical severity')) {
+                    severity = 'Critical';
+                  } else if (lowerSection.includes('high vulnerability') || lowerSection.includes('high risk') || lowerSection.includes('high severity')) {
+                    severity = 'High';
+                  } else if (lowerSection.includes('medium vulnerability') || lowerSection.includes('medium risk') || lowerSection.includes('medium severity')) {
+                    severity = 'Medium';
+                  } else if (lowerSection.includes('low vulnerability') || lowerSection.includes('low risk') || lowerSection.includes('low severity')) {
+                    severity = 'Low';
+                  } else if (lowerSection.includes('informational') || lowerSection.includes('info')) {
+                    severity = 'Informational';
+                  }
+                }
               }
             }
           }
-        }
         }
         
         // STEP 6: Extract explanation from remaining content
@@ -466,128 +468,6 @@ export function useAudit() {
     }
     
     return findings;
-  };
-
-  const performAudit = async (code: string, description: string, fileName?: string, fileCount?: number) => {
-    setIsLoading(true);
-    
-    // Add user message
-    let codeDisplay;
-    if (fileName && fileCount && fileCount > 1) {
-      codeDisplay = `**Uploaded Files:** ${fileName}\n\n**Smart Contract Code:**\n\`\`\`solidity\n${code}\n\`\`\``;
-    } else if (fileName) {
-      codeDisplay = `**Uploaded File:** \`${fileName}\`\n\n**Smart Contract Code:**\n\`\`\`solidity\n${code}\n\`\`\``;
-    } else {
-      codeDisplay = `**Smart Contract Code:**\n\`\`\`solidity\n${code}\n\`\`\``;
-    }
-    
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      type: 'user',
-      content: `${description ? `**Contract Description:** ${description}\n\n` : ''}${codeDisplay}`,
-      timestamp: new Date()
-    };
-    
-    setMessages(prev => [...prev, userMessage]);
-    
-    try {
-      // Check if environment variables are configured
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-      
-      if (!supabaseUrl || !supabaseAnonKey || supabaseUrl.includes('your-project-ref')) {
-        throw new Error('Supabase environment variables are not configured. Please set up your Supabase project and update the .env file with your actual project URL and anonymous key.');
-      }
-      
-      // Call Supabase edge function
-      const response = await fetch(`${supabaseUrl}/functions/v1/audit-contract`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${supabaseAnonKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          code,
-          description
-        })
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `HTTP ${response.status}: Failed to get audit response`);
-      }
-      
-      const data = await response.json();
-      
-      if (!data.success) {
-        throw new Error(data.error || 'Audit request failed');
-      }
-      
-      const auditResult = data.audit || 'Unable to complete audit analysis.';
-      
-      // Parse findings from the response
-      const findings = parseAuditResponse(auditResult);
-      const summary = calculateAuditSummary(findings);
-      
-      // Create appropriate message based on actual findings severity
-      let messageContent = '';
-      if (findings.length > 0) {
-        const criticalIssues = findings.filter(f => f.severity === 'Critical').length;
-        const highIssues = findings.filter(f => f.severity === 'High').length;
-        const mediumIssues = findings.filter(f => f.severity === 'Medium').length;
-        const lowIssues = findings.filter(f => f.severity === 'Low').length;
-        
-        if (criticalIssues > 0) {
-          messageContent = `🚨 **Critical Security Issues Detected** - Found ${findings.length} total issue${findings.length > 1 ? 's' : ''} including ${criticalIssues} critical vulnerabilit${criticalIssues > 1 ? 'ies' : 'y'}. Immediate action required.`;
-        } else if (highIssues > 0) {
-          messageContent = `⚠️ **High-Risk Vulnerabilities Found** - Identified ${findings.length} security issue${findings.length > 1 ? 's' : ''} including ${highIssues} high-severity vulnerabilit${highIssues > 1 ? 'ies' : 'y'}. Please review and address promptly.`;
-        } else if (mediumIssues > 0) {
-          messageContent = `⚠️ **Medium-Risk Issues Detected** - Found ${findings.length} security issue${findings.length > 1 ? 's' : ''} including ${mediumIssues} medium-severity vulnerabilit${mediumIssues > 1 ? 'ies' : 'y'}. Review recommended.`;
-        } else if (lowIssues > 0) {
-          messageContent = `ℹ️ **Low-Risk Issues Found** - Identified ${findings.length} low-severity issue${findings.length > 1 ? 's' : ''} for review. Consider addressing for best practices.`;
-        } else {
-          messageContent = `✅ **Security Audit Complete** - Found ${findings.length} informational item${findings.length > 1 ? 's' : ''} for review.`;
-        }
-      } else {
-        messageContent = '✅ **Security Audit Complete** - No major vulnerabilities detected. The contract appears to follow security best practices.';
-      }
-      
-      // Add assistant message
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        type: 'assistant',
-        content: messageContent,
-        findings: findings.length > 0 ? findings : undefined,
-        summary: summary,
-        timestamp: new Date()
-      };
-      
-      setMessages(prev => [...prev, assistantMessage]);
-      
-    } catch (error) {
-      console.error('Audit error:', error);
-      
-      // Add error message
-      const errorMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        type: 'assistant',
-        content: `❌ **Audit Failed** - ${error instanceof Error ? error.message : 'Unknown error occurred'}. Please check your configuration and try again.`,
-        timestamp: new Date()
-      };
-      
-      setMessages(prev => [...prev, errorMessage]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  return {
-    messages,
-    isLoading,
-    performAudit
-  };
-}
-        else {
   };
 
   const performAudit = async (code: string, description: string, fileName?: string, fileCount?: number) => {
