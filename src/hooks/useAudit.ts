@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { marked } from 'marked';
 
 interface Finding {
   vulnerabilityName: string;
@@ -23,6 +22,9 @@ interface AuditSummary {
   informationalCount: number;
   riskScore: number;
   overallRisk: 'Critical' | 'High' | 'Medium' | 'Low' | 'Minimal';
+  contractName?: string;
+  additionalObservations?: string[];
+  conclusion?: string;
 }
 
 interface Message {
@@ -38,161 +40,165 @@ export function useAudit() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Configure marked for better rendering
-  marked.setOptions({
-    breaks: true,
-    gfm: true,
-    headerIds: false,
-    mangle: false
-  });
-
-  // Clean and beautify markdown content
-  const beautifyMarkdown = (content: string): string => {
-    if (!content || typeof content !== 'string') return '';
-
-    // Remove redundant headers and labels
-    let cleaned = content
-      // Remove redundant section headers
-      .replace(/^\s*(?:vulnerability\s*name|severity|impact|vulnerable\s*code|technical\s*analysis|explanation|proof\s*of\s*concept|remediation|recommendation|references?)\s*:?\s*$/gmi, '')
-      // Remove standalone severity indicators
-      .replace(/^\s*(?:severity|risk\s*level|priority)\s*:\s*(?:critical|high|medium|low|informational)\s*$/gmi, '')
-      // Remove evidence & justification headers
-      .replace(/^\s*(?:evidence\s*&\s*justification|detailed\s*explanation)\s*:?\s*$/gmi, '')
-      // Remove lines with just dashes, equals, or asterisks
-      .replace(/^\s*[-=*]{3,}\s*$/gm, '')
-      // Remove empty bullet points
-      .replace(/^\s*[-*+]\s*$/gm, '')
-      // Convert various bullet points to standard markdown
-      .replace(/^\s*[•◦▪]\s*/gm, '- ')
-      // Ensure proper spacing after periods
-      .replace(/\.(\s*)([A-Z])/g, '.\n\n$2')
-      // Add proper spacing around headers
-      .replace(/^(#{1,6}\s+)/gm, '\n$1')
-      // Ensure proper list formatting
-      .replace(/^(\d+\.\s+)/gm, '\n$1')
-      .replace(/^([-*+]\s+)/gm, '\n$1')
-      // Clean up multiple newlines
-      .replace(/\n{4,}/g, '\n\n\n')
-      // Remove leading/trailing whitespace
-      .trim();
-
-    return cleaned;
-  };
-
-  // Extract code blocks from content
-  const extractCodeBlocks = (content: string): string => {
+  // Helper function to extract code blocks
+  const extractCodeBlocks = (text: string): string[] => {
     const codeBlockRegex = /```[\w]*\n?([\s\S]*?)\n?```/g;
-    const matches = [];
+    const codeBlocks: string[] = [];
     let match;
     
-    while ((match = codeBlockRegex.exec(content)) !== null) {
-      matches.push(match[1].trim());
+    while ((match = codeBlockRegex.exec(text)) !== null) {
+      codeBlocks.push(match[1].trim());
     }
     
-    return matches.join('\n\n');
+    return codeBlocks;
   };
 
-  // Extract severity from text
+  // Helper function to clean markdown formatting
+  const cleanMarkdown = (text: string): string => {
+    return text
+      .replace(/^\s*[-*+]\s+/gm, '') // Remove bullet points
+      .replace(/^\s*\d+\.\s+/gm, '') // Remove numbered lists
+      .replace(/^\s*#{1,6}\s+/gm, '') // Remove markdown headers
+      .replace(/\*\*(.*?)\*\*/g, '$1') // Remove bold formatting
+      .replace(/\*(.*?)\*/g, '$1') // Remove italic formatting
+      .replace(/`([^`]+)`/g, '$1') // Remove inline code formatting
+      .replace(/\n\s*\n\s*\n/g, '\n\n') // Normalize multiple newlines
+      .trim();
+  };
+
+  // Helper function to extract severity from text
   const extractSeverity = (text: string): Finding['severity'] => {
+    const severityMatch = text.match(/(?:severity|risk\s*level|priority):\s*([^\n]+)/i);
+    if (severityMatch) {
+      const severityText = severityMatch[1].toLowerCase().trim();
+      if (severityText.includes('critical')) return 'Critical';
+      if (severityText.includes('high')) return 'High';
+      if (severityText.includes('medium')) return 'Medium';
+      if (severityText.includes('low')) return 'Low';
+      if (severityText.includes('info')) return 'Informational';
+    }
+
+    // Fallback: scan for severity keywords in bullet points
     const textLower = text.toLowerCase();
-    
-    if (textLower.includes('critical')) return 'Critical';
-    if (textLower.includes('high')) return 'High';
-    if (textLower.includes('low')) return 'Low';
-    if (textLower.includes('info')) return 'Informational';
-    
-    return 'Medium'; // Default
+    if (textLower.includes('- **severity**: critical') || textLower.includes('**severity**: critical')) return 'Critical';
+    if (textLower.includes('- **severity**: high') || textLower.includes('**severity**: high')) return 'High';
+    if (textLower.includes('- **severity**: medium') || textLower.includes('**severity**: medium')) return 'Medium';
+    if (textLower.includes('- **severity**: low') || textLower.includes('**severity**: low')) return 'Low';
+    if (textLower.includes('- **severity**: informational') || textLower.includes('**severity**: informational')) return 'Informational';
+
+    return 'Medium'; // Default fallback
   };
 
-  // Simple section extraction
-  const extractSection = (content: string, sectionNames: string[]): string => {
-    for (const sectionName of sectionNames) {
-      const regex = new RegExp(`(?:^|\\n)(?:\\*\\*)?${sectionName}(?:\\*\\*)?[:\\-\\s]*([\\s\\S]*?)(?=\\n(?:\\*\\*|##|###|$))`, 'i');
-      const match = content.match(regex);
-      if (match && match[1] && match[1].trim().length > 20) {
-        return beautifyMarkdown(match[1]);
-      }
-    }
-    return '';
+  // Helper function to extract bullet point content
+  const extractBulletContent = (text: string, bulletName: string): string => {
+    const regex = new RegExp(`-\\s*\\*\\*${bulletName}\\*\\*:?\\s*([\\s\\S]*?)(?=\\n-\\s*\\*\\*|\\n###|$)`, 'i');
+    const match = text.match(regex);
+    return match ? match[1].trim() : '';
   };
 
   const parseAuditResponse = (response: string): { content: string; summary: AuditSummary; findings: Finding[] } => {
-    const cleanContent = beautifyMarkdown(response);
+    let cleanContent = response.trim();
     const findings: Finding[] = [];
 
-    // Look for structured findings using multiple patterns
-    const findingPatterns = [
-      /(?:^|\n)#{1,4}\s*(?:finding|vulnerability|issue)\s*\d*[:\-\s]*([^\n]+)([\s\S]*?)(?=\n#{1,4}\s*(?:finding|vulnerability|issue)|\n#{1,4}\s*\d+\.|\n\*\*(?:finding|vulnerability)|$)/gi,
-      /(?:^|\n)#{1,4}\s*\d+\.\s*([^\n]+)([\s\S]*?)(?=\n#{1,4}\s*\d+\.|\n#{1,4}\s*(?:finding|vulnerability)|$)/gi,
-      /(?:^|\n)\*\*(?:finding|vulnerability|issue)\s*\d*[:\-\s]*([^*\n]+)\*\*([\s\S]*?)(?=\n\*\*(?:finding|vulnerability)|$)/gi
-    ];
+    // Extract contract name
+    const contractMatch = cleanContent.match(/####\s*Contract:\s*`([^`]+)`/);
+    const contractName = contractMatch ? contractMatch[1] : 'Smart Contract';
 
-    let foundFindings = false;
+    // Extract vulnerabilities - look for "### Vulnerability X:" pattern
+    const vulnerabilityMatches = cleanContent.match(/###\s*Vulnerability\s*\d*:?\s*([^\n]+)([\s\S]*?)(?=###\s*(?:Vulnerability|Additional|Conclusion)|$)/gi);
 
-    for (const pattern of findingPatterns) {
-      const matches = [...cleanContent.matchAll(pattern)];
-      
-      if (matches.length > 0) {
-        foundFindings = true;
-        
-        matches.forEach((match, index) => {
-          const vulnerabilityName = beautifyMarkdown(match[1] || `Security Finding ${index + 1}`);
-          const findingContent = match[2] || '';
-          
-          // Extract sections
-          const impact = extractSection(findingContent, ['impact', 'description', 'summary']) || 
-                        '**Security Impact:** This vulnerability poses a security risk that requires attention.';
-          
-          const explanation = extractSection(findingContent, ['technical analysis', 'explanation', 'analysis', 'details']) || 
-                            beautifyMarkdown(findingContent.replace(/```[\s\S]*?```/g, '').substring(0, 500)) || 
-                            'Technical analysis indicates potential security concerns that should be addressed.';
-          
-          const proofOfConcept = extractSection(findingContent, ['proof of concept', 'poc', 'exploit', 'attack']) || 
-                               'Proof of concept analysis required for validation.';
-          
-          const remediation = extractSection(findingContent, ['remediation', 'recommendation', 'fix', 'solution', 'mitigation']) || 
-                            '**Recommended Actions:**\n\n1. Review the identified vulnerability\n2. Implement appropriate security measures\n3. Test the fix thoroughly\n4. Consider additional security audits';
-          
-          const references = extractSection(findingContent, ['references', 'links', 'cve', 'swc']) || '';
-          
-          const vulnerableCode = extractCodeBlocks(findingContent);
-          const severity = extractSeverity(findingContent);
-          
-          // Extract CVE/SWC IDs
-          const cveMatch = findingContent.match(/CVE-\d{4}-\d{4,}/);
-          const swcMatch = findingContent.match(/SWC-\d{3}/);
+    if (vulnerabilityMatches) {
+      vulnerabilityMatches.forEach((vulnSection) => {
+        // Extract vulnerability name
+        const nameMatch = vulnSection.match(/###\s*Vulnerability\s*\d*:?\s*([^\n]+)/i);
+        const vulnerabilityName = nameMatch ? cleanMarkdown(nameMatch[1]) : 'Security Finding';
 
-          findings.push({
-            vulnerabilityName,
-            severity,
-            impact,
-            vulnerableCode,
-            explanation,
-            proofOfConcept,
-            remediation,
-            references,
-            cveId: cveMatch ? cveMatch[0] : undefined,
-            swcId: swcMatch ? swcMatch[0] : undefined
-          });
+        // Extract severity
+        const severity = extractSeverity(vulnSection);
+
+        // Extract vulnerable code
+        const codeBlocks = extractCodeBlocks(vulnSection);
+        const vulnerableCode = codeBlocks.length > 0 ? codeBlocks[0] : '';
+
+        // Extract bullet point sections
+        const explanation = extractBulletContent(vulnSection, 'Detailed Explanation') || 
+                          extractBulletContent(vulnSection, 'Technical Analysis') ||
+                          extractBulletContent(vulnSection, 'Description');
+
+        const proofOfConcept = extractBulletContent(vulnSection, 'Proof of Concept') ||
+                             extractBulletContent(vulnSection, 'Evidence & Justification') ||
+                             extractBulletContent(vulnSection, 'Attack Scenario');
+
+        const remediation = extractBulletContent(vulnSection, 'Recommended Remediation') ||
+                          extractBulletContent(vulnSection, 'Remediation') ||
+                          extractBulletContent(vulnSection, 'Fix');
+
+        const references = extractBulletContent(vulnSection, 'References') ||
+                         extractBulletContent(vulnSection, 'Links');
+
+        // Extract impact (if not found in bullet points, use explanation as fallback)
+        let impact = extractBulletContent(vulnSection, 'Impact') ||
+                    extractBulletContent(vulnSection, 'Risk') ||
+                    extractBulletContent(vulnSection, 'Consequence');
+
+        if (!impact && explanation) {
+          // Extract first sentence of explanation as impact
+          const sentences = explanation.split(/[.!?]+/);
+          impact = sentences[0] ? sentences[0].trim() + '.' : 'Security vulnerability identified';
+        }
+
+        // Add proof of concept code if available
+        if (codeBlocks.length > 1) {
+          const pocCode = codeBlocks.slice(1).join('\n\n');
+          if (pocCode && !proofOfConcept.includes('```')) {
+            proofOfConcept += pocCode ? `\n\n\`\`\`solidity\n${pocCode}\n\`\`\`` : '';
+          }
+        }
+
+        findings.push({
+          vulnerabilityName,
+          severity,
+          impact: cleanMarkdown(impact) || 'Security vulnerability that requires attention',
+          vulnerableCode,
+          explanation: cleanMarkdown(explanation) || 'Technical analysis required',
+          proofOfConcept: cleanMarkdown(proofOfConcept) || '',
+          remediation: cleanMarkdown(remediation) || 'Remediation steps needed',
+          references: cleanMarkdown(references) || ''
         });
-        
-        break;
+      });
+    }
+
+    // Extract additional observations
+    const additionalObservations: string[] = [];
+    const observationsMatch = cleanContent.match(/###\s*Additional\s*Observations([\s\S]*?)(?=###|$)/i);
+    if (observationsMatch) {
+      const observationsText = observationsMatch[1];
+      const bulletPoints = observationsText.match(/^\s*[-*]\s*\*\*([^*]+)\*\*:\s*([^\n]+)/gm);
+      if (bulletPoints) {
+        bulletPoints.forEach(point => {
+          const cleanPoint = cleanMarkdown(point);
+          if (cleanPoint) additionalObservations.push(cleanPoint);
+        });
       }
     }
 
-    // Fallback: Create a general finding if no structured findings found
-    if (!foundFindings && cleanContent.length > 100) {
+    // Extract conclusion
+    const conclusionMatch = cleanContent.match(/###\s*Conclusion([\s\S]*?)$/i);
+    const conclusion = conclusionMatch ? cleanMarkdown(conclusionMatch[1]) : '';
+
+    // If no structured findings found, create a general analysis
+    if (findings.length === 0 && cleanContent.length > 50) {
       const severity = extractSeverity(cleanContent);
       const codeBlocks = extractCodeBlocks(cleanContent);
       
       findings.push({
         vulnerabilityName: 'Smart Contract Security Analysis',
         severity,
-        impact: '**Security Assessment:** Comprehensive security analysis completed with detailed findings.',
-        vulnerableCode: codeBlocks,
-        explanation: beautifyMarkdown(cleanContent.replace(/```[\s\S]*?```/g, '')),
-        proofOfConcept: 'Detailed analysis provided above for security validation.',
-        remediation: '**Recommended Actions:**\n\n1. Review the security analysis above\n2. Implement suggested improvements\n3. Follow smart contract best practices\n4. Consider additional security testing',
+        impact: 'Comprehensive security assessment completed',
+        vulnerableCode: codeBlocks.join('\n\n'),
+        explanation: cleanMarkdown(cleanContent.replace(/```[\s\S]*?```/g, '')),
+        proofOfConcept: '',
+        remediation: 'Review the analysis and implement recommended security measures',
         references: ''
       });
     }
@@ -209,7 +215,10 @@ export function useAudit() {
         const weights = { Critical: 10, High: 7, Medium: 4, Low: 2, Informational: 1 };
         return score + weights[f.severity];
       }, 0),
-      overallRisk: 'Minimal'
+      overallRisk: 'Minimal',
+      contractName,
+      additionalObservations,
+      conclusion
     };
 
     // Determine overall risk
@@ -249,39 +258,89 @@ export function useAudit() {
     setMessages(prev => [...prev, userMessage]);
     
     try {
-      // Check if environment variables are configured
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      // Get API key from environment variables
+      const apiKey = import.meta.env.VITE_SHIPABLE_API_KEY || '707c6f07-3426-4674-b885-55bdc9eb3549';
       
-      if (!supabaseUrl || !supabaseAnonKey || supabaseUrl.includes('your-project-ref')) {
-        throw new Error('Supabase environment variables are not configured. Please set up your Supabase project and update the .env file with your actual project URL and anonymous key.');
+      if (!apiKey) {
+        throw new Error('Shipable AI API key is not configured. Please set VITE_SHIPABLE_API_KEY in your .env file.');
       }
+
+      // Create the audit prompt - optimized for professional output
+      const auditPrompt = `You are a professional smart contract security auditor. Perform a comprehensive security audit of the following Solidity smart contract and provide your findings in a structured markdown format that follows industry standards.
+
+${description ? `Contract Description: ${description}\n\n` : ''}Smart Contract Code:
+\`\`\`solidity
+${code}
+\`\`\`
+
+Please provide your audit report in the following EXACT structured markdown format:
+
+### Smart Contract Security Audit Report
+
+#### Contract: \`ContractName\`
+
+---
+
+### Vulnerability 1: [Vulnerability Name]
+
+- **Severity**: [Critical/High/Medium/Low/Informational]
+- **Vulnerable Code Snippet**:
+  \`\`\`solidity
+  [Code snippet showing the vulnerability]
+  \`\`\`
+- **Detailed Explanation**: [Technical explanation of the vulnerability and why it's problematic]
+- **Evidence & Justification**: [Evidence supporting the finding]
+- **Proof of Concept**: [How the vulnerability could be exploited]
+  \`\`\`solidity
+  [Optional: Exploit code example]
+  \`\`\`
+- **Recommended Remediation**: [Detailed steps to fix the vulnerability]
+
+### Vulnerability 2: [Next Vulnerability Name]
+[Follow same format]
+
+### Additional Observations
+
+- **Visibility**: [Assessment of function visibility]
+- **Access Control**: [Assessment of access control mechanisms]
+- **Integer Overflow/Underflow**: [Assessment of arithmetic operations]
+- **Reentrancy**: [Assessment of reentrancy risks]
+- **Gas Optimization**: [Assessment of gas efficiency]
+- **Code Quality**: [Assessment of code quality and best practices]
+
+### Conclusion
+
+[Summary of the audit findings, overall security assessment, and priority recommendations]
+
+Focus on identifying common smart contract vulnerabilities such as reentrancy, access control issues, integer overflow/underflow, price manipulation, unchecked external calls, DoS attacks, and other security concerns. Provide actionable remediation steps for each finding.`;
       
-      // Call Supabase edge function
-      const response = await fetch(`${supabaseUrl}/functions/v1/audit-contract`, {
+      // Call Shipable AI API directly
+      const response = await fetch('https://api.shipable.ai/v3/chat/completions', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${supabaseAnonKey}`,
+          'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          code,
-          description
+          model: 'o1',
+          messages: [
+            { role: 'user', content: auditPrompt }
+          ]
         })
       });
       
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `HTTP ${response.status}: Failed to get audit response`);
+        throw new Error(errorData.error?.message || `HTTP ${response.status}: Failed to get audit response`);
       }
       
       const data = await response.json();
       
-      if (!data.success) {
-        throw new Error(data.error || 'Audit request failed');
+      if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+        throw new Error('Invalid response format from Shipable AI API');
       }
       
-      const auditResult = data.audit || 'Unable to complete audit analysis.';
+      const auditResult = data.choices[0].message.content || 'Unable to complete audit analysis.';
       
       // Parse findings from the response
       const { content, summary, findings } = parseAuditResponse(auditResult);
