@@ -114,6 +114,28 @@ export function useAudit() {
       .trim();
   };
 
+  // Helper function to improve markdown formatting for better readability
+  const improveMarkdownFormatting = (text: string): string => {
+    if (!text || typeof text !== 'string') return '';
+    
+    return text
+      // Add proper line breaks after sentences
+      .replace(/\. ([A-Z])/g, '.\n\n$1')
+      // Ensure proper spacing around headers
+      .replace(/^(#{1,6}\s+)/gm, '\n$1')
+      // Add spacing around bold sections that look like headers
+      .replace(/\*\*(Recommended|References?|Impact|Analysis|Steps?|Solution|Mitigation)\*\*/gi, '\n\n**$1**\n\n')
+      // Ensure proper list formatting
+      .replace(/^(\d+\.\s+)/gm, '\n$1')
+      .replace(/^([-*+]\s+)/gm, '\n$1')
+      // Add spacing around code blocks
+      .replace(/```/g, '\n```\n')
+      // Normalize excessive whitespace while preserving intentional breaks
+      .replace(/\n{4,}/g, '\n\n\n')
+      .replace(/^\s+|\s+$/g, '')
+      .trim();
+  };
+
   // Helper function to extract severity from text
   const extractSeverity = (text: string): Finding['severity'] => {
     const textLower = text.toLowerCase();
