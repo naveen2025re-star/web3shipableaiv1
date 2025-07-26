@@ -220,18 +220,16 @@ export function useAudit() {
           
           // If no remediation found, look for it in the entire finding text
           if (!remediation) {
-            sections.impact = sectionContent.trim();
+            const remediationPatterns = [
               /(?:remediation|recommendation|fix|solution|mitigation)[:\-\s]*([^]*?)(?=\n(?:\*\*|##|###|🔍|📊|⚡|🛠️|📚)|$)/i,
-            sections.proofOfConcept = sectionContent.trim();
             ];
-            sections.remediation = sectionContent.trim();
             for (const pattern of remediationPatterns) {
-            sections.explanation = sectionContent.trim();
+              const match = findingText.match(pattern);
               if (match && match[1].trim()) {
-              sections.remediation += '\n\n' + codeBlocks.map(code => '```solidity\n' + code + '\n```').join('\n\n');
+                remediation = cleanMarkdown(match[1]);
                 break;
-              sections.explanation += '\n\n' + codeBlocks.map(code => '```solidity\n' + code + '\n```').join('\n\n');
-            sections.references = sectionContent.trim();
+              }
+            }
           }
           remainingText = remediationResult.remaining;
 
@@ -284,7 +282,7 @@ export function useAudit() {
             severity,
             impact: impact || 'Security vulnerability identified',
             vulnerableCode,
-            explanation: cleanContent.replace(/```[\s\S]*?```/g, '').trim(),
+            explanation,
             proofOfConcept,
             remediation: remediation || 'Review the technical analysis for remediation guidance',
             references,
@@ -415,7 +413,7 @@ export function useAudit() {
           'Authorization': `Bearer ${supabaseAnonKey}`,
           'Content-Type': 'application/json',
         },
-        explanation: cleanContent.replace(/```[\s\S]*?```/g, '').trim(),
+        body: JSON.stringify({
           code,
           description
         })
