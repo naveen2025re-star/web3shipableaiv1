@@ -366,26 +366,57 @@ export function useAudit() {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
       
-      if (!supabaseUrl || !supabaseAnonKey || supabaseUrl.includes('your-project-ref')) {
-        throw new Error('Supabase environment variables are not configured. Please set up your Supabase project and update the .env file with your actual project URL and anonymous key.');
+      if (!supabaseUrl || !supabaseAnonKey || 
+          supabaseUrl.includes('your-project-ref') || 
+          supabaseUrl.includes('your_supabase_project_url') ||
+          supabaseAnonKey.includes('your_supabase_anon_key')) {
+        throw new Error('🔧 **Supabase Setup Required**\n\nTo use the audit feature, you need to:\n\n1. Click the "Connect to Supabase" button in the top right corner\n2. Set up your Supabase project\n3. The environment variables will be configured automatically\n\nOnce connected, you can start auditing smart contracts!');
       }
       
       // Call Supabase edge function
-      const response = await fetch(`${supabaseUrl}/functions/v1/audit-contract`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${supabaseAnonKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          code,
-          description
-        })
-      });
+      let response;
+      try {
+        response = await fetch(`${supabaseUrl}/functions/v1/audit-contract`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${supabaseAnonKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            code,
+            description
+          })
+        });
+      } catch (fetchError) {
+        if (fetchError instanceof TypeError && fetchError.message.includes('Failed to fetch')) {
+          throw new Error('🌐 **Connection Error**\n\nUnable to connect to Supabase. This could be due to:\n\n• **Supabase not configured**: Click "Connect to Supabase" in the top right\n• **Network connectivity issues**: Check your internet connection\n• **Edge function not deployed**: The audit-contract function may not be available\n\nPlease try connecting to Supabase first, then retry the audit.');
+        }
+        throw fetchError;
+      }
       
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `HTTP ${response.status}: Failed to get audit response`);
+        let errorMessage = `HTTP ${response.status}: Failed to get audit response`;
+        
+        try {
+          const errorData = await response.json();
+          if (errorData.error) {
+            errorMessage = `🚨 **Audit Service Error**\n\n${errorData.error}`;
+            if (errorData.details) {
+              errorMessage += `\n\n**Details:** ${errorData.details}`;
+            }
+          }
+        } catch (parseError) {
+          // If we can't parse the error response, use the status-based message
+          if (response.status === 404) {
+            errorMessage = '🔍 **Edge Function Not Found**\n\nThe audit-contract function is not deployed. Please ensure your Supabase project has the edge function properly set up.';
+          } else if (response.status === 401 || response.status === 403) {
+            errorMessage = '🔐 **Authentication Error**\n\nInvalid Supabase credentials. Please reconnect to Supabase using the button in the top right corner.';
+          } else if (response.status >= 500) {
+            errorMessage = '⚠️ **Server Error**\n\nThe audit service is temporarily unavailable. Please try again in a few moments.';
+          }
+        }
+        
+        throw new Error(errorMessage);
       }
       
       const data = await response.json();
