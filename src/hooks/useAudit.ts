@@ -211,10 +211,28 @@ export function useAudit() {
             [
               /(?:^|\n)(?:\*\*)?(?:remediation|recommendation|fix|solution)(?:\*\*)?[:\-\s]*/i,
               /(?:^|\n)-\s*\*\*(?:remediation|recommendation|fix|solution)\*\*[:\-\s]*/i
+              /(?:^|\n)🛠️\s*(?:remediation|recommendation|fix|solution|mitigation)[:\-\s]*/i,
+              /(?:^|\n)(?:remediation|recommendation|fix|solution|mitigation)\s*steps[:\-\s]*/i
             ],
             sectionEndPatterns
           );
-          const remediation = cleanMarkdown(remediationResult.extracted);
+          let remediation = cleanMarkdown(remediationResult.extracted);
+          
+          // If no remediation found, look for it in the entire finding text
+          if (!remediation) {
+            const remediationPatterns = [
+              /(?:remediation|recommendation|fix|solution|mitigation)[:\-\s]*([^]*?)(?=\n(?:\*\*|##|###|🔍|📊|⚡|🛠️|📚)|$)/i,
+              /(?:to\s+fix|to\s+resolve|to\s+address)[:\-\s]*([^]*?)(?=\n(?:\*\*|##|###|🔍|📊|⚡|🛠️|📚)|$)/i
+            ];
+            
+            for (const pattern of remediationPatterns) {
+              const match = findingText.match(pattern);
+              if (match && match[1].trim()) {
+                remediation = cleanMarkdown(match[1].trim());
+                break;
+              }
+            }
+          }
           remainingText = remediationResult.remaining;
 
           // Extract References
@@ -268,7 +286,7 @@ export function useAudit() {
             vulnerableCode,
             explanation,
             proofOfConcept,
-            remediation: remediation || 'Remediation steps needed',
+            remediation: remediation || 'Review the technical analysis for remediation guidance',
             references,
             cveId: cveMatch ? cveMatch[0] : undefined,
             swcId: swcMatch ? swcMatch[0] : undefined
