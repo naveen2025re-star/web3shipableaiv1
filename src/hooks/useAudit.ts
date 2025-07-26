@@ -210,7 +210,7 @@ export function useAudit() {
             remainingText,
             [
               /(?:^|\n)(?:\*\*)?(?:remediation|recommendation|fix|solution)(?:\*\*)?[:\-\s]*/i,
-              /(?:^|\n)-\s*\*\*(?:remediation|recommendation|fix|solution)\*\*[:\-\s]*/i
+              /(?:^|\n)-\s*\*\*(?:remediation|recommendation|fix|solution)\*\*[:\-\s]*/i,
               /(?:^|\n)🛠️\s*(?:remediation|recommendation|fix|solution|mitigation)[:\-\s]*/i,
               /(?:^|\n)(?:remediation|recommendation|fix|solution|mitigation)\s*steps[:\-\s]*/i
             ],
