@@ -220,18 +220,18 @@ export function useAudit() {
           
           // If no remediation found, look for it in the entire finding text
           if (!remediation) {
-            const remediationPatterns = [
+            sections.impact = sectionContent.trim();
               /(?:remediation|recommendation|fix|solution|mitigation)[:\-\s]*([^]*?)(?=\n(?:\*\*|##|###|🔍|📊|⚡|🛠️|📚)|$)/i,
-              /(?:to\s+fix|to\s+resolve|to\s+address)[:\-\s]*([^]*?)(?=\n(?:\*\*|##|###|🔍|📊|⚡|🛠️|📚)|$)/i
+            sections.proofOfConcept = sectionContent.trim();
             ];
-            
+            sections.remediation = sectionContent.trim();
             for (const pattern of remediationPatterns) {
-              const match = findingText.match(pattern);
+            sections.explanation = sectionContent.trim();
               if (match && match[1].trim()) {
-                remediation = cleanMarkdown(match[1].trim());
+              sections.remediation += '\n\n' + codeBlocks.map(code => '```solidity\n' + code + '\n```').join('\n\n');
                 break;
-              }
-            }
+              sections.explanation += '\n\n' + codeBlocks.map(code => '```solidity\n' + code + '\n```').join('\n\n');
+            sections.references = sectionContent.trim();
           }
           remainingText = remediationResult.remaining;
 
