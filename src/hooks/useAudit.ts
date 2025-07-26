@@ -37,161 +37,321 @@ export function useAudit() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  const calculateAuditSummary = (content: string): AuditSummary => {
-    // Extract summary information from the markdown content
-    const criticalCount = (content.match(/critical/gi) || []).length;
-    const highCount = (content.match(/high.*severity|high.*risk/gi) || []).length;
-    const mediumCount = (content.match(/medium.*severity|medium.*risk/gi) || []).length;
-    const lowCount = (content.match(/low.*severity|low.*risk/gi) || []).length;
-    const informationalCount = (content.match(/informational|info/gi) || []).length;
-    
-    // Count actual findings by looking for numbered sections or finding headers
-    const findingMatches = content.match(/(?:## FINDING|# FINDING|FINDING \d+|Finding \d+|\d+\.\s*[A-Z])/gi) || [];
-    const totalFindings = Math.max(findingMatches.length, 1);
-    
-    // Calculate risk score (weighted by severity)
-    const riskScore = (criticalCount * 10) + (highCount * 7) + (mediumCount * 4) + (lowCount * 2) + (informationalCount * 1);
-    
-    let overallRisk: 'Critical' | 'High' | 'Medium' | 'Low' | 'Minimal' = 'Minimal';
-    if (criticalCount > 0) overallRisk = 'Critical';
-    else if (highCount > 0) overallRisk = 'High';
-    else if (mediumCount > 2) overallRisk = 'High';
-    else if (mediumCount > 0 || lowCount > 3) overallRisk = 'Medium';
-    else if (lowCount > 0) overallRisk = 'Low';
+  // Enhanced helper function to extract and remove sections with multiple end patterns
+  const extractAndRemoveSection = (
+    text: string, 
+    startPatterns: RegExp[], 
+    endPatterns: RegExp[]
+  ): { extracted: string; remaining: string } => {
+    let bestMatch = null;
+    let bestStartIndex = -1;
+    let bestEndIndex = -1;
+    let bestExtracted = '';
 
-    return {
-      totalFindings,
-      criticalCount,
-      highCount,
-      mediumCount,
-      lowCount,
-      informationalCount,
-      riskScore,
-      overallRisk
-    };
-  };
-
-  const parseAuditResponse = (response: string): { content: string; summary: AuditSummary } => {
-    // Clean up the response content
-    let cleanContent = response
-      .replace(/^\s*```[\w]*\n?/, '') // Remove opening code blocks
-      .replace(/\n?```\s*$/, '') // Remove closing code blocks
-      .trim();
-    
-    // Extract structured findings from the response
-    const findings: Finding[] = [];
-    
-    // Look for vulnerability sections in various formats
-    const vulnerabilityPatterns = [
-      /(?:##?\s*)?(?:FINDING|Finding|Vulnerability)\s*(?:\d+)?[:\-\s]*([^\n]+)[\s\S]*?(?=(?:##?\s*(?:FINDING|Finding|Vulnerability)|\n##|\n#\s|$))/gi,
-      /(?:##?\s*)?([^#\n]+(?:vulnerability|issue|problem|flaw)[^#\n]*)[\s\S]*?(?=(?:##?\s*(?:FINDING|Finding|Vulnerability)|\n##|\n#\s|$))/gi,
-      /(?:##?\s*)?(\d+\.\s*[^#\n]+)[\s\S]*?(?=(?:\d+\.\s*|\n##|\n#\s|$))/gi
-    ];
-    
-    let foundFindings = false;
-    
-    for (const pattern of vulnerabilityPatterns) {
-      const matches = [...cleanContent.matchAll(pattern)];
-      
-      if (matches.length > 0) {
-        foundFindings = true;
+    // Find the best matching start pattern
+    for (const startPattern of startPatterns) {
+      const startMatch = text.match(startPattern);
+      if (startMatch && startMatch.index !== undefined) {
+        const startIndex = startMatch.index + startMatch[0].length;
         
-        matches.forEach((match, index) => {
-          const fullSection = match[0];
-          const title = match[1]?.trim() || `Vulnerability ${index + 1}`;
-          
-          // Extract severity
-          const severityMatch = fullSection.match(/(?:severity|risk)[:\s]*([a-z]+)/i);
-          let severity: Finding['severity'] = 'Medium';
-          if (severityMatch) {
-            const sev = severityMatch[1].toLowerCase();
-            if (sev.includes('critical')) severity = 'Critical';
-            else if (sev.includes('high')) severity = 'High';
-            else if (sev.includes('medium')) severity = 'Medium';
-            else if (sev.includes('low')) severity = 'Low';
-            else if (sev.includes('info')) severity = 'Informational';
+        // Look for end patterns
+        const remainingText = text.substring(startIndex);
+        let endIndex = remainingText.length; // Default to end of text
+        
+        for (const endPattern of endPatterns) {
+          const endMatch = remainingText.match(endPattern);
+          if (endMatch && endMatch.index !== undefined && endMatch.index < endIndex) {
+            endIndex = endMatch.index;
           }
-          
-          // Extract impact
-          const impactMatch = fullSection.match(/(?:impact|description)[:\s]*([^\n]+(?:\n(?!\s*(?:proof|remediation|reference|vulnerable|explanation))[^\n]*)*)/i);
-          const impact = impactMatch ? impactMatch[1].trim() : 'Impact assessment needed';
-          
-          // Extract vulnerable code
-          const codeMatches = fullSection.match(/```[\w]*\n?([\s\S]*?)\n?```/g);
-          const vulnerableCode = codeMatches ? codeMatches.map(code => 
-            code.replace(/```[\w]*\n?/, '').replace(/\n?```$/, '')
-          ).join('\n\n') : '';
-          
-          // Extract explanation/technical analysis
-          let explanation = fullSection
-            .replace(/(?:##?\s*)?(?:FINDING|Finding|Vulnerability)\s*(?:\d+)?[:\-\s]*[^\n]+\n?/i, '')
-            .replace(/(?:severity|risk)[:\s]*[^\n]+\n?/i, '')
-            .replace(/(?:impact|description)[:\s]*[^\n]+(?:\n(?!\s*(?:proof|remediation|reference|vulnerable|explanation))[^\n]*)*/i, '')
-            .replace(/```[\s\S]*?```/g, '')
-            .replace(/(?:proof\s*of\s*concept|poc)[:\s]*[\s\S]*?(?=(?:remediation|reference|$))/i, '')
-            .replace(/(?:remediation|recommendation|fix)[:\s]*[\s\S]*?(?=(?:reference|$))/i, '')
-            .replace(/(?:reference|link)[:\s]*[\s\S]*$/i, '')
-            .trim();
-          
-          // Extract proof of concept
-          const pocMatch = fullSection.match(/(?:proof\s*of\s*concept|poc)[:\s]*([\s\S]*?)(?=(?:remediation|recommendation|reference|$))/i);
-          const proofOfConcept = pocMatch ? pocMatch[1].trim() : '';
-          
-          // Extract remediation
-          const remediationMatch = fullSection.match(/(?:remediation|recommendation|fix)[:\s]*([\s\S]*?)(?=(?:reference|$))/i);
-          const remediation = remediationMatch ? remediationMatch[1].trim() : '';
-          
-          // Extract references
-          const referencesMatch = fullSection.match(/(?:reference|link)[:\s]*([\s\S]*?)$/i);
-          const references = referencesMatch ? referencesMatch[1].trim() : '';
-          
-          findings.push({
-            vulnerabilityName: title,
-            severity,
-            impact,
-            vulnerableCode,
-            explanation: explanation || 'Technical analysis needed',
-            proofOfConcept,
-            remediation,
-            references
-          });
-        });
+        }
         
-        break; // Use the first pattern that finds matches
+        const extracted = remainingText.substring(0, endIndex).trim();
+        
+        // Use the first valid match found
+        if (extracted && (bestMatch === null || startMatch.index < bestStartIndex)) {
+          bestMatch = startMatch;
+          bestStartIndex = startMatch.index;
+          bestEndIndex = startIndex + endIndex;
+          bestExtracted = extracted;
+        }
       }
     }
+
+    if (bestMatch && bestStartIndex !== -1) {
+      const remaining = text.substring(0, bestStartIndex) + text.substring(bestEndIndex);
+      return { extracted: bestExtracted, remaining: remaining.trim() };
+    }
+
+    return { extracted: '', remaining: text };
+  };
+
+  // Helper function to extract code blocks
+  const extractCodeBlocks = (text: string): string => {
+    const codeBlockRegex = /```[\w]*\n?([\s\S]*?)\n?```/g;
+    const codeBlocks: string[] = [];
+    let match;
     
-    // If no structured findings found, create a general finding from the content
-    if (!foundFindings && cleanContent.length > 50) {
-      // Look for severity indicators in the content
-      let severity: Finding['severity'] = 'Medium';
-      if (/critical/i.test(cleanContent)) severity = 'Critical';
-      else if (/high/i.test(cleanContent)) severity = 'High';
-      else if (/low/i.test(cleanContent)) severity = 'Low';
-      else if (/info/i.test(cleanContent)) severity = 'Informational';
-      
-      // Extract code blocks
-      const codeMatches = cleanContent.match(/```[\w]*\n?([\s\S]*?)\n?```/g);
-      const vulnerableCode = codeMatches ? codeMatches.map(code => 
-        code.replace(/```[\w]*\n?/, '').replace(/\n?```$/, '')
-      ).join('\n\n') : '';
-      
-      // Create a general finding
-      findings.push({
-        vulnerabilityName: 'Security Analysis',
-        severity,
-        impact: 'Security assessment completed',
-        vulnerableCode,
-        explanation: cleanContent.replace(/```[\s\S]*?```/g, '').trim(),
-        proofOfConcept: '',
-        remediation: '',
-        references: ''
-      });
+    while ((match = codeBlockRegex.exec(text)) !== null) {
+      codeBlocks.push(match[1].trim());
     }
     
-    // Calculate summary from the content
-    const summary = calculateAuditSummary(cleanContent);
+    return codeBlocks.join('\n\n');
+  };
+
+  // Helper function to clean markdown formatting
+  const cleanMarkdown = (text: string): string => {
+    return text
+      .replace(/```[\s\S]*?```/g, '') // Remove code blocks temporarily for cleaning
+      .replace(/^\s*[-*+]\s+/gm, '') // Remove bullet points
+      .replace(/^\s*\d+\.\s+/gm, '') // Remove numbered lists
+      .replace(/^\s*#{1,6}\s+/gm, '') // Remove markdown headers
+      .replace(/\*\*(.*?)\*\*/g, '$1') // Remove bold formatting
+      .replace(/\*(.*?)\*/g, '$1') // Remove italic formatting
+      .replace(/`([^`]+)`/g, '$1') // Remove inline code formatting
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // Remove markdown links, keep text
+      .replace(/\n\s*\n\s*\n/g, '\n\n') // Normalize multiple newlines
+      .replace(/^\s+|\s+$/g, '') // Trim whitespace
+      .trim();
+  };
+
+  // Helper function to extract severity from text
+  const extractSeverity = (text: string): Finding['severity'] => {
+    const textLower = text.toLowerCase();
     
+    // Look for explicit severity declarations
+    const severityPatterns = [
+      /(?:severity|risk\s*level|priority):\s*([^\n]+)/i,
+      /\*\*severity\*\*:\s*([^\n]+)/i,
+      /-\s*\*\*severity\*\*:\s*([^\n]+)/i,
+      /severity\s*=\s*([^\n]+)/i
+    ];
+    
+    for (const pattern of severityPatterns) {
+      const match = text.match(pattern);
+      if (match) {
+        const severityText = match[1].toLowerCase().trim();
+        if (severityText.includes('critical')) return 'Critical';
+        if (severityText.includes('high')) return 'High';
+        if (severityText.includes('medium')) return 'Medium';
+        if (severityText.includes('low')) return 'Low';
+        if (severityText.includes('info')) return 'Informational';
+      }
+    }
+
+    // Fallback: scan for severity keywords anywhere in text
+    if (textLower.includes('critical')) return 'Critical';
+    if (textLower.includes('high')) return 'High';
+    if (textLower.includes('low')) return 'Low';
+    if (textLower.includes('info')) return 'Informational';
+
+    return 'Medium'; // Default fallback
+  };
+
+  const parseAuditResponse = (response: string): { content: string; summary: AuditSummary; findings: Finding[] } => {
+    let cleanContent = response.trim();
+    const findings: Finding[] = [];
+
+    // Multiple patterns to identify finding headers
+    const findingHeaderPatterns = [
+      /(?:^|\n)#{1,4}\s*(?:finding|vulnerability|issue|problem)\s*\d*[:\-\s]*([^\n]+)/gi,
+      /(?:^|\n)#{1,4}\s*\d+\.\s*([^\n]+)/gi,
+      /(?:^|\n)\*\*(?:finding|vulnerability|issue)\s*\d*[:\-\s]*([^*\n]+)\*\*/gi,
+      /(?:^|\n)(?:finding|vulnerability|issue)\s*\d*[:\-\s]*([^\n]+)/gi
+    ];
+
+    // Try to find structured findings
+    let foundStructuredFindings = false;
+
+    for (const headerPattern of findingHeaderPatterns) {
+      const headerMatches = [...cleanContent.matchAll(headerPattern)];
+      
+      if (headerMatches.length > 0) {
+        foundStructuredFindings = true;
+        
+        for (let i = 0; i < headerMatches.length; i++) {
+          const currentMatch = headerMatches[i];
+          const nextMatch = headerMatches[i + 1];
+          
+          const startIndex = currentMatch.index! + currentMatch[0].length;
+          const endIndex = nextMatch ? nextMatch.index! : cleanContent.length;
+          
+          const findingText = cleanContent.substring(startIndex, endIndex).trim();
+          const vulnerabilityName = cleanMarkdown(currentMatch[1] || `Security Finding ${i + 1}`);
+          
+          if (!findingText) continue;
+
+          // Extract severity from the entire finding block
+          const severity = extractSeverity(currentMatch[0] + '\n' + findingText);
+
+          // Define end patterns for section extraction
+          const sectionEndPatterns = [
+            /(?:^|\n)(?:\*\*(?:impact|vulnerable|explanation|proof|remediation|reference)|#{1,4}\s*(?:impact|vulnerable|explanation|proof|remediation|reference))/i,
+            /(?:^|\n)-\s*\*\*(?:impact|vulnerable|explanation|proof|remediation|reference)/i,
+            /(?:^|\n)#{1,4}\s*\d+\./,
+            /(?:^|\n)\*\*(?:finding|vulnerability|issue)/i
+          ];
+
+          let remainingText = findingText;
+
+          // Extract Proof of Concept first (most specific)
+          const pocResult = extractAndRemoveSection(
+            remainingText,
+            [
+              /(?:^|\n)(?:\*\*)?(?:proof\s*of\s*concept|poc)(?:\*\*)?[:\-\s]*/i,
+              /(?:^|\n)-\s*\*\*(?:proof\s*of\s*concept|poc)\*\*[:\-\s]*/i
+            ],
+            sectionEndPatterns
+          );
+          const proofOfConcept = cleanMarkdown(pocResult.extracted);
+          remainingText = pocResult.remaining;
+
+          // Extract Remediation
+          const remediationResult = extractAndRemoveSection(
+            remainingText,
+            [
+              /(?:^|\n)(?:\*\*)?(?:remediation|recommendation|fix|solution)(?:\*\*)?[:\-\s]*/i,
+              /(?:^|\n)-\s*\*\*(?:remediation|recommendation|fix|solution)\*\*[:\-\s]*/i
+            ],
+            sectionEndPatterns
+          );
+          const remediation = cleanMarkdown(remediationResult.extracted);
+          remainingText = remediationResult.remaining;
+
+          // Extract References
+          const referencesResult = extractAndRemoveSection(
+            remainingText,
+            [
+              /(?:^|\n)(?:\*\*)?(?:references?|links?|swc|cve)(?:\*\*)?[:\-\s]*/i,
+              /(?:^|\n)-\s*\*\*(?:references?|links?|swc|cve)\*\*[:\-\s]*/i
+            ],
+            sectionEndPatterns
+          );
+          const references = cleanMarkdown(referencesResult.extracted);
+          remainingText = referencesResult.remaining;
+
+          // Extract Impact
+          const impactResult = extractAndRemoveSection(
+            remainingText,
+            [
+              /(?:^|\n)(?:\*\*)?(?:impact|description|summary)(?:\*\*)?[:\-\s]*/i,
+              /(?:^|\n)-\s*\*\*(?:impact|description|summary)\*\*[:\-\s]*/i
+            ],
+            sectionEndPatterns
+          );
+          const impact = cleanMarkdown(impactResult.extracted);
+          remainingText = impactResult.remaining;
+
+          // Extract Vulnerable Code
+          const vulnerableCodeBlocks = extractCodeBlocks(findingText);
+          const codeResult = extractAndRemoveSection(
+            remainingText,
+            [
+              /(?:^|\n)(?:\*\*)?(?:vulnerable\s*code|code|location)(?:\*\*)?[:\-\s]*/i,
+              /(?:^|\n)-\s*\*\*(?:vulnerable\s*code|code|location)\*\*[:\-\s]*/i
+            ],
+            sectionEndPatterns
+          );
+          const vulnerableCode = vulnerableCodeBlocks || cleanMarkdown(codeResult.extracted);
+          remainingText = codeResult.remaining;
+
+          // What's left is the explanation/technical analysis
+          const explanation = cleanMarkdown(remainingText) || 'Technical analysis required';
+
+          // Extract CVE/SWC IDs
+          const cveMatch = findingText.match(/CVE-\d{4}-\d{4,}/);
+          const swcMatch = findingText.match(/SWC-\d{3}/);
+
+          findings.push({
+            vulnerabilityName,
+            severity,
+            impact: impact || 'Security vulnerability identified',
+            vulnerableCode,
+            explanation,
+            proofOfConcept,
+            remediation: remediation || 'Remediation steps needed',
+            references,
+            cveId: cveMatch ? cveMatch[0] : undefined,
+            swcId: swcMatch ? swcMatch[0] : undefined
+          });
+        }
+        
+        break; // Use the first pattern that finds structured findings
+      }
+    }
+
+    // Fallback: If no structured findings found, try to extract from bullet points or sections
+    if (!foundStructuredFindings) {
+      // Look for any vulnerability mentions in the text
+      const vulnerabilityPatterns = [
+        /(?:vulnerability|issue|problem|flaw|weakness)[:\-\s]*([^\n]+)/gi,
+        /(?:^|\n)-\s*([^\n]*(?:vulnerability|issue|problem|flaw|weakness)[^\n]*)/gi
+      ];
+
+      let foundVulnerabilities = false;
+      for (const pattern of vulnerabilityPatterns) {
+        const matches = [...cleanContent.matchAll(pattern)];
+        if (matches.length > 0) {
+          foundVulnerabilities = true;
+          matches.forEach((match, index) => {
+            const vulnerabilityName = cleanMarkdown(match[1] || `Security Finding ${index + 1}`);
+            const severity = extractSeverity(cleanContent);
+            const codeBlocks = extractCodeBlocks(cleanContent);
+            
+            findings.push({
+              vulnerabilityName,
+              severity,
+              impact: 'Security assessment completed',
+              vulnerableCode: codeBlocks,
+              explanation: cleanMarkdown(cleanContent.replace(/```[\s\S]*?```/g, '')),
+              proofOfConcept: '',
+              remediation: 'Review the analysis and implement recommended security measures',
+              references: ''
+            });
+          });
+          break;
+        }
+      }
+
+      // Ultimate fallback: Create a general finding if content exists
+      if (!foundVulnerabilities && cleanContent.length > 50) {
+        const severity = extractSeverity(cleanContent);
+        const codeBlocks = extractCodeBlocks(cleanContent);
+        
+        findings.push({
+          vulnerabilityName: 'Smart Contract Security Analysis',
+          severity,
+          impact: 'Comprehensive security assessment completed',
+          vulnerableCode: codeBlocks,
+          explanation: cleanMarkdown(cleanContent.replace(/```[\s\S]*?```/g, '')),
+          proofOfConcept: '',
+          remediation: 'Review the analysis and implement recommended security measures',
+          references: ''
+        });
+      }
+    }
+
+    // Calculate summary
+    const summary: AuditSummary = {
+      totalFindings: findings.length,
+      criticalCount: findings.filter(f => f.severity === 'Critical').length,
+      highCount: findings.filter(f => f.severity === 'High').length,
+      mediumCount: findings.filter(f => f.severity === 'Medium').length,
+      lowCount: findings.filter(f => f.severity === 'Low').length,
+      informationalCount: findings.filter(f => f.severity === 'Informational').length,
+      riskScore: findings.reduce((score, f) => {
+        const weights = { Critical: 10, High: 7, Medium: 4, Low: 2, Informational: 1 };
+        return score + weights[f.severity];
+      }, 0),
+      overallRisk: 'Minimal'
+    };
+
+    // Determine overall risk
+    if (summary.criticalCount > 0) summary.overallRisk = 'Critical';
+    else if (summary.highCount > 0) summary.overallRisk = 'High';
+    else if (summary.mediumCount > 2) summary.overallRisk = 'High';
+    else if (summary.mediumCount > 0 || summary.lowCount > 3) summary.overallRisk = 'Medium';
+    else if (summary.lowCount > 0) summary.overallRisk = 'Low';
+
     return {
       content: cleanContent,
       summary,
@@ -259,34 +419,11 @@ export function useAudit() {
       // Parse findings from the response
       const { content, summary, findings } = parseAuditResponse(auditResult);
       
-      // Create appropriate message based on actual findings severity
-      let messageContent = '';
-      if (summary.totalFindings > 0) {
-        const criticalIssues = summary.criticalCount;
-        const highIssues = summary.highCount;
-        const mediumIssues = summary.mediumCount;
-        const lowIssues = summary.lowCount;
-        
-        if (criticalIssues > 0) {
-          messageContent = content;
-        } else if (highIssues > 0) {
-          messageContent = content;
-        } else if (mediumIssues > 0) {
-          messageContent = content;
-        } else if (lowIssues > 0) {
-          messageContent = content;
-        } else {
-          messageContent = content;
-        }
-      } else {
-        messageContent = content;
-      }
-      
       // Add assistant message
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         type: 'assistant',
-        content: messageContent,
+        content: content,
         findings: findings,
         summary: summary,
         timestamp: new Date()
