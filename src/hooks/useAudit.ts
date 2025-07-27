@@ -52,6 +52,44 @@ export function useAudit() {
     
     return codeBlocks;
   };
+  // Helper function to clean code snippets by removing function declarations and descriptive comments
+  const cleanCodeSnippet = (code: string): string => {
+    if (!code || code.trim().length === 0) return code;
+    
+    const lines = code.split('\n');
+    const cleanedLines = lines.filter(line => {
+      const trimmedLine = line.trim();
+      
+      // Skip empty lines at start/end but keep internal empty lines for structure
+      if (trimmedLine === '') return true;
+      
+      // Remove function declarations
+      if (trimmedLine.startsWith('function ') && trimmedLine.includes('(')) return false;
+      
+      // Remove standalone closing braces (but keep braces that are part of code blocks)
+      if (trimmedLine === '}' || /^}\s*\/\//.test(trimmedLine)) return false;
+      
+      // Remove descriptive comments
+      if (trimmedLine.startsWith('// Function:') || 
+          trimmedLine.startsWith('// Start of') || 
+          trimmedLine.startsWith('// End of') || 
+          trimmedLine.startsWith('// Vulnerable function') ||
+          trimmedLine.startsWith('// This function') ||
+          trimmedLine.startsWith('// The following')) return false;
+      
+      return true;
+    });
+    
+    // Remove leading and trailing empty lines
+    while (cleanedLines.length > 0 && cleanedLines[0].trim() === '') {
+      cleanedLines.shift();
+    }
+    while (cleanedLines.length > 0 && cleanedLines[cleanedLines.length - 1].trim() === '') {
+      cleanedLines.pop();
+    }
+    
+    return cleanedLines.join('\n');
+  };
 
   // Helper function to extract severity from text
   const extractSeverity = (text: string): Finding['severity'] => {
@@ -105,7 +143,7 @@ export function useAudit() {
 
         // Extract vulnerable code
         const codeBlocks = extractCodeBlocks(vulnSection);
-        const vulnerableCode = codeBlocks.length > 0 ? codeBlocks[0] : '';
+        const vulnerableCode = codeBlocks.length > 0 ? cleanCodeSnippet(codeBlocks[0]) : '';
 
         // Extract bullet point sections
         const explanation = extractBulletContent(vulnSection, 'Detailed Explanation') || 
@@ -138,7 +176,7 @@ export function useAudit() {
         if (codeBlocks.length > 1) {
           const pocCode = codeBlocks.slice(1).join('\n\n');
           if (pocCode && !proofOfConcept.includes('```')) {
-            proofOfConcept += pocCode ? `\n\n\`\`\`solidity\n${pocCode}\n\`\`\`` : '';
+            proofOfConcept += pocCode ? `\n\n\`\`\`solidity\n${cleanCodeSnippet(pocCode)}\n\`\`\`` : '';
           }
         }
 
@@ -182,7 +220,7 @@ export function useAudit() {
         vulnerabilityName: 'Smart Contract Security Analysis',
         severity,
         impact: 'Comprehensive security assessment completed',
-        vulnerableCode: codeBlocks.join('\n\n'),
+        vulnerableCode: cleanCodeSnippet(codeBlocks.join('\n\n')),
         explanation: cleanContent.replace(/```[\s\S]*?```/g, '').trim(),
         proofOfConcept: '',
         remediation: 'Review the analysis and implement recommended security measures',
