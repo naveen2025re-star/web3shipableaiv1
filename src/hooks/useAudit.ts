@@ -53,19 +53,6 @@ export function useAudit() {
     return codeBlocks;
   };
 
-  // Helper function to clean markdown formatting
-  const cleanMarkdown = (text: string): string => {
-    return text
-      .replace(/^\s*[-*+]\s+/gm, '') // Remove bullet points
-      .replace(/^\s*\d+\.\s+/gm, '') // Remove numbered lists
-      .replace(/^\s*#{1,6}\s+/gm, '') // Remove markdown headers
-      .replace(/\*\*(.*?)\*\*/g, '$1') // Remove bold formatting
-      .replace(/\*(.*?)\*/g, '$1') // Remove italic formatting
-      .replace(/`([^`]+)`/g, '$1') // Remove inline code formatting
-      .replace(/\n\s*\n\s*\n/g, '\n\n') // Normalize multiple newlines
-      .trim();
-  };
-
   // Helper function to extract severity from text
   const extractSeverity = (text: string): Finding['severity'] => {
     const severityMatch = text.match(/(?:severity|risk\s*level|priority):\s*([^\n]+)/i);
@@ -111,7 +98,7 @@ export function useAudit() {
       vulnerabilityMatches.forEach((vulnSection) => {
         // Extract vulnerability name
         const nameMatch = vulnSection.match(/###\s*Vulnerability\s*\d*:?\s*([^\n]+)/i);
-        const vulnerabilityName = nameMatch ? cleanMarkdown(nameMatch[1]) : 'Security Finding';
+        const vulnerabilityName = nameMatch ? nameMatch[1].trim() : 'Security Finding';
 
         // Extract severity
         const severity = extractSeverity(vulnSection);
@@ -158,12 +145,12 @@ export function useAudit() {
         findings.push({
           vulnerabilityName,
           severity,
-          impact: cleanMarkdown(impact) || 'Security vulnerability that requires attention',
+          impact: impact || 'Security vulnerability that requires attention',
           vulnerableCode,
-          explanation: cleanMarkdown(explanation) || 'Technical analysis required',
-          proofOfConcept: cleanMarkdown(proofOfConcept) || '',
-          remediation: cleanMarkdown(remediation) || 'Remediation steps needed',
-          references: cleanMarkdown(references) || ''
+          explanation: explanation || 'Technical analysis required',
+          proofOfConcept: proofOfConcept || '',
+          remediation: remediation || 'Remediation steps needed',
+          references: references || ''
         });
       });
     }
@@ -176,7 +163,7 @@ export function useAudit() {
       const bulletPoints = observationsText.match(/^\s*[-*]\s*\*\*([^*]+)\*\*:\s*([^\n]+)/gm);
       if (bulletPoints) {
         bulletPoints.forEach(point => {
-          const cleanPoint = cleanMarkdown(point);
+          const cleanPoint = point.trim();
           if (cleanPoint) additionalObservations.push(cleanPoint);
         });
       }
@@ -184,7 +171,7 @@ export function useAudit() {
 
     // Extract conclusion
     const conclusionMatch = cleanContent.match(/###\s*Conclusion([\s\S]*?)$/i);
-    const conclusion = conclusionMatch ? cleanMarkdown(conclusionMatch[1]) : '';
+    const conclusion = conclusionMatch ? conclusionMatch[1].trim() : '';
 
     // If no structured findings found, create a general analysis
     if (findings.length === 0 && cleanContent.length > 50) {
@@ -196,7 +183,7 @@ export function useAudit() {
         severity,
         impact: 'Comprehensive security assessment completed',
         vulnerableCode: codeBlocks.join('\n\n'),
-        explanation: cleanMarkdown(cleanContent.replace(/```[\s\S]*?```/g, '')),
+        explanation: cleanContent.replace(/```[\s\S]*?```/g, '').trim(),
         proofOfConcept: '',
         remediation: 'Review the analysis and implement recommended security measures',
         references: ''
