@@ -174,7 +174,7 @@ export function useAudit() {
 
         // Add proof of concept code if available
         if (codeBlocks.length > 1) {
-          const pocCode = codeBlocks.slice(1).join('\n\n');
+          const pocCode = cleanCodeSnippet(codeBlocks.slice(1).join('\n\n'));
           if (pocCode && !proofOfConcept.includes('```')) {
             proofOfConcept += pocCode ? `\n\n\`\`\`solidity\n${cleanCodeSnippet(pocCode)}\n\`\`\`` : '';
           }
