@@ -12,7 +12,6 @@ export default function ChatApp() {
     isLoading,
     setMessages,
     setIsLoading,
-    isLoading,
     createNewSession,
     loadSession,
     saveMessage,
