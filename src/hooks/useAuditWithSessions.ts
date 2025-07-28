@@ -280,53 +280,7 @@ export function useAuditWithSessions() {
         throw new Error('Shipable AI API key is not configured. Please set VITE_SHIPABLE_API_KEY in your .env file.');
       }
 
-      const auditPrompt = `You are a professional smart contract security auditor. Perform a comprehensive security audit of the following Solidity smart contract and provide your findings in a structured markdown format that follows industry standards.
-
-${description ? `Contract Description: ${description}\n\n` : ''}Smart Contract Code:
-\`\`\`solidity
-${code}
-\`\`\`
-
-Please provide your audit report in the following EXACT structured markdown format:
-
-### Smart Contract Security Audit Report
-
-#### Contract: \`ContractName\`
-
----
-
-### Vulnerability 1: [Vulnerability Name]
-
-- **Severity**: [Critical/High/Medium/Low/Informational]
-- **Vulnerable Code Snippet**:
-  \`\`\`solidity
-  [Code snippet showing the vulnerability]
-  \`\`\`
-- **Detailed Explanation**: [Technical explanation of the vulnerability and why it's problematic]
-- **Evidence & Justification**: [Evidence supporting the finding]
-- **Proof of Concept**: [How the vulnerability could be exploited]
-  \`\`\`solidity
-  [Optional: Exploit code example]
-  \`\`\`
-- **Recommended Remediation**: [Detailed steps to fix the vulnerability]
-
-### Vulnerability 2: [Next Vulnerability Name]
-[Follow same format]
-
-### Additional Observations
-
-- **Visibility**: [Assessment of function visibility]
-- **Access Control**: [Assessment of access control mechanisms]
-- **Integer Overflow/Underflow**: [Assessment of arithmetic operations]
-- **Reentrancy**: [Assessment of reentrancy risks]
-- **Gas Optimization**: [Assessment of gas efficiency]
-- **Code Quality**: [Assessment of code quality and best practices]
-
-### Conclusion
-
-[Summary of the audit findings, overall security assessment, and priority recommendations]
-
-Focus on identifying common smart contract vulnerabilities such as reentrancy, access control issues, integer overflow/underflow, price manipulation, unchecked external calls, DoS attacks, and other security concerns. Provide actionable remediation steps for each finding.`;
+      const userMessage = `${description ? `Contract Description: ${description}\n\n` : ''}Please audit this smart contract:\n\n\`\`\`solidity\n${code}\n\`\`\``;
       
       const response = await fetch('https://api.shipable.ai/v3/chat/completions', {
         method: 'POST',
@@ -337,7 +291,7 @@ Focus on identifying common smart contract vulnerabilities such as reentrancy, a
         body: JSON.stringify({
           model: 'o1',
           messages: [
-            { role: 'user', content: auditPrompt }
+            { role: 'user', content: userMessage }
           ]
         })
       });
