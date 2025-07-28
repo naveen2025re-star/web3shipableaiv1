@@ -301,7 +301,7 @@ export function useAudit() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'o1',
+          model: 'o3-mini',
           messages: [
             { role: 'user', content: userMessage }
           ]
