@@ -48,7 +48,7 @@ Deno.serve(async (req: Request) => {
         "Authorization": `Bearer ${Deno.env.get("SHIPABLE_AI_API_KEY")}`,
       },
       body: JSON.stringify({
-        model: "o3-mini",
+        model: "o1",
         messages: [
           {
             role: "user",
