@@ -113,6 +113,7 @@ export default function AuthPage() {
                   className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
                   placeholder="Enter your email"
                   required
+                  required={isSignUp}
                 />
               </div>
             </div>
@@ -130,6 +131,7 @@ export default function AuthPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
                   placeholder="Enter your password"
+                  required
                   required
                 />
                 <button

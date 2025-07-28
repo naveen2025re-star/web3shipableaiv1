@@ -38,6 +38,7 @@ export default function Sidebar({ currentSessionId, onSessionSelect, onNewChat }
         .select('id, title, created_at, updated_at')
         .eq('user_id', user.id)
         .eq('is_archived', false)
+        .eq('is_archived', false)
         .order('updated_at', { ascending: false });
 
       if (error) throw error;

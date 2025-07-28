@@ -55,6 +55,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           full_name: fullName,
         },
       },
+      options: {
+        data: {
+          full_name: fullName,
+        },
+      },
     });
     return { error };
   };
