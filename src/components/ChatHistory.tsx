@@ -17,7 +17,7 @@ interface ChatHistoryProps {
 
 export default function ChatHistory({ messages, onStartNewAudit }: ChatHistoryProps) {
   return (
-    <div className="flex-1 overflow-y-auto p-6 space-y-6">
+    <div className="flex-1 overflow-y-auto p-6 space-y-6 thin-scrollbar">
       {messages.length === 0 ? (
         <div className="flex items-center justify-center min-h-full">
           <div className="text-center max-w-md">

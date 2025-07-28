@@ -302,7 +302,7 @@ END OF REPORT
                   </div>
                 </div>
                 
-                <div className={`prose prose-sm max-w-none ${isExpanded ? '' : 'max-h-96 overflow-hidden'}`}>
+                <div className={`prose prose-sm max-w-none ${isExpanded ? '' : 'max-h-96 overflow-hidden thin-scrollbar'}`}>
                   <ReactMarkdown
                     components={markdownComponents}
                     remarkPlugins={[remarkGfm]}

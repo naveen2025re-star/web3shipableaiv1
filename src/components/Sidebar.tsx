@@ -140,7 +140,7 @@ export default function Sidebar({ currentSessionId, onSessionSelect, onNewChat }
       </div>
 
       {/* Chat Sessions */}
-      <div className="flex-1 overflow-y-auto p-4">
+      <div className="flex-1 overflow-y-auto p-4 dark-scrollbar">
         <div className="space-y-2">
           {loading ? (
             <div className="text-center text-gray-400 py-8">
