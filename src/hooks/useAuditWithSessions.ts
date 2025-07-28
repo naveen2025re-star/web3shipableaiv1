@@ -274,40 +274,37 @@ export function useAuditWithSessions() {
     }
     
     try {
-      const apiKey = import.meta.env.VITE_SHIPABLE_API_KEY || '707c6f07-3426-4674-b885-55bdc9eb3549';
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
       
-      if (!apiKey) {
-        throw new Error('Shipable AI API key is not configured. Please set VITE_SHIPABLE_API_KEY in your .env file.');
+      if (!supabaseUrl || !supabaseAnonKey) {
+        throw new Error('Supabase configuration is missing. Please check your environment variables.');
       }
-
-      const userMessage = `${description ? `Contract Description: ${description}\n\n` : ''}Please audit this smart contract:\n\n\`\`\`solidity\n${code}\n\`\`\``;
       
-      const response = await fetch('https://api.shipable.ai/v3/chat/completions', {
+      const response = await fetch(`${supabaseUrl}/functions/v1/audit-contract`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${apiKey}`,
+          'Authorization': `Bearer ${supabaseAnonKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'o3-mini',
-          messages: [
-            { role: 'user', content: userMessage }
-          ]
+          code,
+          description
         })
       });
       
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error?.message || `HTTP ${response.status}: Failed to get audit response`);
+        throw new Error(errorData.error || `HTTP ${response.status}: Failed to get audit response`);
       }
       
       const data = await response.json();
       
-      if (!data.choices || !data.choices[0] || !data.choices[0].message) {
-        throw new Error('Invalid response format from Shipable AI API');
+      if (!data.audit) {
+        throw new Error('Invalid response format from audit service');
       }
       
-      const auditResult = data.choices[0].message.content || 'Unable to complete audit analysis.';
+      const auditResult = data.audit || 'Unable to complete audit analysis.';
       
       const { content, summary, findings } = parseAuditResponse(auditResult);
       
