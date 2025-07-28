@@ -12,9 +12,10 @@ interface Message {
 
 interface ChatHistoryProps {
   messages: Message[];
+  onStartNewAudit: () => void;
 }
 
-export default function ChatHistory({ messages }: ChatHistoryProps) {
+export default function ChatHistory({ messages, onStartNewAudit }: ChatHistoryProps) {
   return (
     <div className="flex-1 overflow-y-auto p-4 space-y-6">
       {messages.length === 0 ? (
@@ -28,6 +29,15 @@ export default function ChatHistory({ messages }: ChatHistoryProps) {
               Upload your smart contract code to receive a comprehensive security audit. Our AI analyzes for vulnerabilities, 
               provides detailed findings with severity ratings, and offers expert remediation guidance.
             </p>
+            
+            <button
+              onClick={onStartNewAudit}
+              className="mt-6 inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold shadow-lg hover:shadow-xl"
+            >
+              <Shield className="h-5 w-5 mr-2" />
+              Start Your First Audit
+            </button>
+            
             <div className="mt-4 grid grid-cols-2 gap-4 text-sm">
               <div className="bg-green-50 p-3 rounded-lg border border-green-200">
                 <div className="font-medium text-green-800 mb-1">✓ Comprehensive Analysis</div>

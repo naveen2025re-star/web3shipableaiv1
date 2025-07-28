@@ -16,19 +16,16 @@ export default function ChatApp() {
 
   const { performAudit } = useAuditWithSessions();
 
-  // Create initial session on mount
-  useEffect(() => {
-    if (!currentSessionId) {
-      createNewSession();
-    }
-  }, [currentSessionId, createNewSession]);
-
   const handleNewChat = () => {
     createNewSession();
   };
 
   const handleSessionSelect = (sessionId: string) => {
     loadSession(sessionId);
+  };
+
+  const handleStartNewAudit = () => {
+    createNewSession();
   };
 
   const handleAudit = async (code: string, description: string, fileName?: string, fileCount?: number) => {
@@ -49,7 +46,10 @@ export default function ChatApp() {
       />
       
       <div className="flex-1 flex flex-col">
-        <ChatHistory messages={messages} />
+        <ChatHistory 
+          messages={messages} 
+          onStartNewAudit={handleStartNewAudit}
+        />
         <CodeInput onSubmit={handleAudit} isLoading={isLoading} />
       </div>
     </div>
