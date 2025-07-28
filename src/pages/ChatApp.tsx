@@ -10,8 +10,13 @@ export default function ChatApp() {
     currentSessionId,
     messages,
     isLoading,
+    setMessages,
+    setIsLoading,
+    isLoading,
     createNewSession,
     loadSession,
+    saveMessage,
+    updateSessionTitle,
   } = useChatSessions();
 
   const { performAudit } = useAuditWithSessions();
@@ -29,12 +34,25 @@ export default function ChatApp() {
   };
 
   const handleAudit = async (code: string, description: string, fileName?: string, fileCount?: number) => {
-    if (!currentSessionId) {
-      const newSessionId = await createNewSession();
-      if (!newSessionId) return;
+    let sessionId = currentSessionId;
+    
+    if (!sessionId) {
+      sessionId = await createNewSession();
+      if (!sessionId) return;
     }
     
-    await performAudit(code, description, fileName, fileCount);
+    await performAudit(
+      code,
+      description,
+      sessionId,
+      messages,
+      setMessages,
+      setIsLoading,
+      saveMessage,
+      updateSessionTitle,
+      fileName,
+      fileCount
+    );
   };
 
   return (

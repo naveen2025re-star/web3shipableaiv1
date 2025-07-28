@@ -1,4 +1,3 @@
-import { useChatSessions } from './useChatSessions';
 
 interface Finding {
   vulnerabilityName: string;
@@ -37,15 +36,6 @@ interface Message {
 }
 
 export function useAuditWithSessions() {
-  const {
-    currentSessionId,
-    messages,
-    setMessages,
-    setIsLoading,
-    saveMessage,
-    updateSessionTitle,
-  } = useChatSessions();
-
   // Helper function to extract code blocks
   const extractCodeBlocks = (text: string): string[] => {
     const codeBlockRegex = /```[\w]*\n?([\s\S]*?)\n?```/g;
@@ -243,9 +233,18 @@ export function useAuditWithSessions() {
     };
   };
 
-  const performAudit = async (code: string, description: string, fileName?: string, fileCount?: number) => {
-    if (!currentSessionId) return;
-
+  const performAudit = async (
+    code: string,
+    description: string,
+    currentSessionId: string,
+    messages: Message[],
+    setMessages: React.Dispatch<React.SetStateAction<Message[]>>,
+    setIsLoading: React.Dispatch<React.SetStateAction<boolean>>,
+    saveMessage: (message: Message) => Promise<void>,
+    updateSessionTitle: (sessionId: string, title: string) => Promise<void>,
+    fileName?: string,
+    fileCount?: number
+  ) => {
     setIsLoading(true);
     
     // Create user message
