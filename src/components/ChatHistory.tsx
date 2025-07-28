@@ -17,9 +17,9 @@ interface ChatHistoryProps {
 
 export default function ChatHistory({ messages, onStartNewAudit }: ChatHistoryProps) {
   return (
-    <div className="flex-1 overflow-y-auto p-4 space-y-6">
+    <div className="flex-1 overflow-y-auto p-6 space-y-6">
       {messages.length === 0 ? (
-        <div className="flex items-center justify-center h-full">
+        <div className="flex items-center justify-center min-h-full">
           <div className="text-center max-w-md">
             <div className="bg-blue-100 rounded-full p-4 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
               <Shield className="h-8 w-8 text-blue-600" />
@@ -32,7 +32,7 @@ export default function ChatHistory({ messages, onStartNewAudit }: ChatHistoryPr
             
             <button
               onClick={onStartNewAudit}
-              className="mt-6 inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold shadow-lg hover:shadow-xl"
+              className="mt-6 inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-semibold shadow-lg hover:shadow-xl"
             >
               <Shield className="h-5 w-5 mr-2" />
               Start Your First Audit

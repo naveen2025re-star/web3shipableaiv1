@@ -62,12 +62,14 @@ export default function ChatApp() {
         onNewChat={handleNewChat}
       />
       
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col min-h-0">
         <ChatHistory 
           messages={messages} 
           onStartNewAudit={handleStartNewAudit}
         />
-        <CodeInput onSubmit={handleAudit} isLoading={isLoading} />
+        <div className="flex-shrink-0 p-4 bg-white border-t border-gray-200">
+          <CodeInput onSubmit={handleAudit} isLoading={isLoading} />
+        </div>
       </div>
     </div>
   );

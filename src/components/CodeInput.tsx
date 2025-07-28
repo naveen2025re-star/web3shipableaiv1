@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Shield, Code2, FileText, UploadCloud, X, File } from 'lucide-react';
+import { Shield, Plus, X, File, Send } from 'lucide-react';
 
 interface CodeInputProps {
   onSubmit: (code: string, description: string, fileName?: string, fileCount?: number) => void;
@@ -7,27 +7,45 @@ interface CodeInputProps {
 }
 
 export default function CodeInput({ onSubmit, isLoading }: CodeInputProps) {
-  const [code, setCode] = useState('');
-  const [description, setDescription] = useState('');
-  const [inputMode, setInputMode] = useState<'paste' | 'upload'>('paste');
+  const [input, setInput] = useState('');
   const [uploadedFiles, setUploadedFiles] = useState<Array<{name: string, content: string}>>([]);
   const [isDragOver, setIsDragOver] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Extract description and code from input
+    const lines = input.trim().split('\n');
+    let description = '';
+    let code = '';
+    
+    if (uploadedFiles.length > 0) {
+      // If files are uploaded, treat input as description
+      description = input.trim();
+      code = uploadedFiles.map(file => `// File: ${file.name}\n${file.content}`).join('\n\n');
+    } else if (input.trim()) {
+      // If no files, check if input contains code
+      const hasCodePattern = /pragma solidity|contract\s+\w+|function\s+\w+|mapping\s*\(/.test(input);
+      
+      if (hasCodePattern) {
+        // Input contains code
+        code = input.trim();
+      } else {
+        // Input is just description, no code
+        description = input.trim();
+        code = '';
+      }
+    }
+    
     if (code.trim() || uploadedFiles.length > 0) {
-      const finalCode = uploadedFiles.length > 0 
-        ? uploadedFiles.map(file => `// File: ${file.name}\n${file.content}`).join('\n\n')
-        : code;
       const finalFileName = uploadedFiles.length > 0 
         ? uploadedFiles.length === 1 
           ? uploadedFiles[0].name 
           : `${uploadedFiles.length} files`
         : undefined;
       
-      onSubmit(finalCode, description, finalFileName, uploadedFiles.length || undefined);
-      setCode('');
-      setDescription('');
+      onSubmit(code, description, finalFileName, uploadedFiles.length || undefined);
+      setInput('');
       setUploadedFiles([]);
     }
   };
@@ -71,203 +89,126 @@ export default function CodeInput({ onSubmit, isLoading }: CodeInputProps) {
     }
   };
 
-  const clearFiles = () => {
-    setUploadedFiles([]);
-  };
-
   const removeFile = (index: number) => {
     setUploadedFiles(prev => prev.filter((_, i) => i !== index));
   };
 
-  const switchMode = (mode: 'paste' | 'upload') => {
-    setInputMode(mode);
-    setCode('');
-    setUploadedFiles([]);
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+      e.preventDefault();
+      handleSubmit(e as any);
+    }
   };
 
   return (
-    <div className="bg-white border-t border-gray-200 p-4">
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
-            📋 Contract Description (Optional)
-          </label>
-          <div className="relative">
-            <FileText className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-            <input
-              id="description"
-              type="text"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Describe your smart contract (e.g., DeFi token, NFT marketplace...)"
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
-        </div>
-
-        {/* Input Mode Toggle */}
-        <div>
-          <div className="flex items-center space-x-1 mb-3">
-            <button
-              type="button"
-              onClick={() => switchMode('paste')}
-              className={`flex items-center px-3 py-1.5 text-sm rounded-md transition-colors ${
-                inputMode === 'paste'
-                  ? 'bg-blue-100 text-blue-700 border border-blue-200'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              <Code2 className="h-4 w-4 mr-1" />
-              Paste Code
-            </button>
-            <button
-              type="button"
-              onClick={() => switchMode('upload')}
-              className={`flex items-center px-3 py-1.5 text-sm rounded-md transition-colors ${
-                inputMode === 'upload'
-                  ? 'bg-blue-100 text-blue-700 border border-blue-200'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              <UploadCloud className="h-4 w-4 mr-1" />
-              Upload File
-            </button>
-          </div>
-
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            🔍 Smart Contract Code
-          </label>
-
-          {inputMode === 'paste' ? (
-            <div className="relative">
-              <Code2 className="absolute left-3 top-3 h-4 w-4 text-gray-400 z-10" />
-              <textarea
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-                placeholder="// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
-
-contract YourContract {
-    // Paste your smart contract code here...
-    // Supports Solidity, Vyper, Rust (Solana), and more
-}"
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm min-h-[200px] resize-vertical"
-                required
-              />
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {uploadedFiles.length === 0 ? (
-                <div
-                  className={`relative border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
-                    isDragOver
-                      ? 'border-blue-400 bg-blue-50'
-                      : 'border-gray-300 hover:border-gray-400'
-                  }`}
-                  onDragOver={handleDragOver}
-                  onDragLeave={handleDragLeave}
-                  onDrop={handleDrop}
-                >
-                  <UploadCloud className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                  <p className="text-sm text-gray-600 mb-2">
-                    Drag and drop your smart contract files here, or
-                  </p>
-                  <label className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 cursor-pointer transition-colors">
-                    <File className="h-4 w-4 mr-2" />
-                    Choose Files
-                    <input
-                      type="file"
-                      onChange={handleFileChange}
-                      accept=".sol,.vy,.rs,.js,.ts,.cairo,.move"
-                      multiple
-                      className="hidden"
-                    />
-                  </label>
-                  <p className="text-xs text-gray-500 mt-2">
-                    Supports multiple .sol, .vy, .rs, .js, .ts, .cairo, .move files
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-900">
-                      {uploadedFiles.length} file{uploadedFiles.length > 1 ? 's' : ''} uploaded
-                    </span>
+    <div className="max-w-4xl mx-auto">
+      <form onSubmit={handleSubmit}>
+        <div 
+          className={`relative bg-white border rounded-2xl shadow-lg transition-all duration-200 ${
+            isDragOver ? 'border-blue-400 shadow-xl' : 'border-gray-300 hover:border-gray-400'
+          } ${isLoading ? 'opacity-75' : ''}`}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+        >
+          {/* Uploaded Files */}
+          {uploadedFiles.length > 0 && (
+            <div className="p-3 border-b border-gray-200 bg-gray-50 rounded-t-2xl">
+              <div className="flex flex-wrap gap-2">
+                {uploadedFiles.map((file, index) => (
+                  <div key={index} className="inline-flex items-center bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm">
+                    <File className="h-3 w-3 mr-1" />
+                    <span className="max-w-32 truncate">{file.name}</span>
                     <button
                       type="button"
-                      onClick={clearFiles}
-                      className="text-sm text-red-600 hover:text-red-800 transition-colors"
+                      onClick={() => removeFile(index)}
+                      className="ml-2 hover:bg-blue-200 rounded-full p-0.5 transition-colors"
                     >
-                      Clear All
+                      <X className="h-3 w-3" />
                     </button>
                   </div>
-                  
-                  <div className="space-y-2 max-h-64 overflow-y-auto">
-                    {uploadedFiles.map((file, index) => (
-                      <div key={index} className="border border-gray-300 rounded-lg p-3">
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center space-x-2">
-                            <File className="h-4 w-4 text-blue-600" />
-                            <span className="text-sm font-medium text-gray-900">{file.name}</span>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => removeFile(index)}
-                            className="p-1 hover:bg-gray-100 rounded-md transition-colors"
-                            title="Remove file"
-                          >
-                            <X className="h-3 w-3 text-gray-500" />
-                          </button>
-                        </div>
-                        <div className="bg-gray-50 rounded-md p-2 max-h-20 overflow-y-auto">
-                          <pre className="text-xs text-gray-700 font-mono whitespace-pre-wrap">
-                            {file.content.length > 200 ? `${file.content.substring(0, 200)}...` : file.content}
-                          </pre>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  
-                  <label className="inline-flex items-center px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm rounded-lg cursor-pointer transition-colors">
-                    <File className="h-4 w-4 mr-2" />
-                    Add More Files
-                    <input
-                      type="file"
-                      onChange={handleFileChange}
-                      accept=".sol,.vy,.rs,.js,.ts,.cairo,.move"
-                      multiple
-                      className="hidden"
-                    />
-                  </label>
-                </div>
-              )}
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Main Input Area */}
+          <div className="relative">
+            <textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={uploadedFiles.length > 0 
+                ? "Describe your smart contract or add additional context..." 
+                : "Paste your smart contract code here or describe what you want to audit..."
+              }
+              className="w-full px-4 py-4 pr-24 border-none outline-none resize-none rounded-2xl text-gray-900 placeholder-gray-500 min-h-[60px] max-h-[300px]"
+              style={{ 
+                height: 'auto',
+                minHeight: '60px'
+              }}
+              onInput={(e) => {
+                const target = e.target as HTMLTextAreaElement;
+                target.style.height = 'auto';
+                target.style.height = Math.min(target.scrollHeight, 300) + 'px';
+              }}
+              disabled={isLoading}
+            />
+
+            {/* Action Buttons */}
+            <div className="absolute right-2 bottom-2 flex items-center space-x-2">
+              {/* File Upload Button */}
+              <label className="p-2 hover:bg-gray-100 rounded-lg cursor-pointer transition-colors">
+                <Plus className="h-5 w-5 text-gray-600" />
+                <input
+                  type="file"
+                  onChange={handleFileChange}
+                  accept=".sol,.vy,.rs,.js,.ts,.cairo,.move"
+                  multiple
+                  className="hidden"
+                  disabled={isLoading}
+                />
+              </label>
+
+              {/* Submit Button */}
+              <button
+                type="submit"
+                disabled={(!input.trim() && uploadedFiles.length === 0) || isLoading}
+                className="p-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
+              >
+                {isLoading ? (
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                ) : (
+                  <Send className="h-5 w-5" />
+                )}
+              </button>
+            </div>
+          </div>
+
+          {/* Drag & Drop Overlay */}
+          {isDragOver && (
+            <div className="absolute inset-0 bg-blue-50 bg-opacity-90 border-2 border-dashed border-blue-400 rounded-2xl flex items-center justify-center">
+              <div className="text-center">
+                <File className="h-8 w-8 text-blue-600 mx-auto mb-2" />
+                <p className="text-blue-800 font-medium">Drop your smart contract files here</p>
+              </div>
             </div>
           )}
         </div>
-        
-        <div className="flex justify-end">
-          <button
-            type="submit"
-            disabled={(!code.trim() && uploadedFiles.length === 0) || isLoading}
-            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            {isLoading ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                Auditing...
-              </>
-            ) : (
-              <>
-                <Shield className="h-4 w-4 mr-2" />
-                🚀 Start Security Audit
-                {uploadedFiles.length > 0 && (
-                  <span className="ml-1 text-xs bg-blue-500 px-1.5 py-0.5 rounded-full">
-                    {uploadedFiles.length}
-                  </span>
-                )}
-              </>
+
+        {/* Helper Text */}
+        <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
+          <div className="flex items-center space-x-4">
+            <span>Supports Solidity, Vyper, Rust, and more</span>
+            {uploadedFiles.length === 0 && (
+              <span>• Drag & drop files or use the + button</span>
             )}
-          </button>
+          </div>
+          <div className="flex items-center space-x-2">
+            <kbd className="px-1.5 py-0.5 bg-gray-100 rounded text-xs">⌘</kbd>
+            <kbd className="px-1.5 py-0.5 bg-gray-100 rounded text-xs">Enter</kbd>
+            <span>to send</span>
+          </div>
         </div>
       </form>
     </div>
