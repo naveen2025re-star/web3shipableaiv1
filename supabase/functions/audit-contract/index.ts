@@ -51,12 +51,8 @@ Deno.serve(async (req: Request) => {
         model: "o1",
         messages: [
           {
-            role: "system",
-            content: "You are a smart contract security auditor. Analyze the provided code for vulnerabilities, best practices, and potential issues."
-          },
-          {
             role: "user",
-            content: `Please audit this smart contract:\n\n${description ? `Description: ${description}\n\n` : ''}Code:\n${code}`
+            content: `${description ? `${description}\n\n` : ''}${code}`
           }
         ]
       })
