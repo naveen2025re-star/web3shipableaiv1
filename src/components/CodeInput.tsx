@@ -47,6 +47,13 @@ export default function CodeInput({ onSubmit, isLoading }: CodeInputProps) {
       onSubmit(code, description, finalFileName, uploadedFiles.length || undefined);
       setInput('');
       setUploadedFiles([]);
+      
+      // Reset textarea height
+      const textarea = document.querySelector('textarea');
+      if (textarea) {
+        textarea.style.height = 'auto';
+        textarea.style.height = '60px';
+      }
     }
   };
 

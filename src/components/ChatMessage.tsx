@@ -113,8 +113,20 @@ END OF REPORT
     code: ({ node, inline, className, children, ...props }: any) => {
       const match = /language-(\w+)/.exec(className || '');
       const language = match ? match[1] : 'text';
+      const codeContent = String(children).replace(/\n$/, '');
       
-      return !inline ? (
+      // Don't render single words or short phrases as code blocks
+      // Only render as code block if it's multiline or contains typical code patterns
+      const isActualCode = !inline && (
+        codeContent.includes('\n') || 
+        codeContent.includes(';') || 
+        codeContent.includes('(') || 
+        codeContent.includes('{') || 
+        codeContent.includes('=') ||
+        codeContent.length > 50
+      );
+      
+      return !inline && isActualCode ? (
         <SyntaxHighlighter
           language={language}
           style={vscDarkPlus}
@@ -123,7 +135,7 @@ END OF REPORT
           wrapLines={true}
           {...props}
         >
-          {String(children).replace(/\n$/, '')}
+          {codeContent}
         </SyntaxHighlighter>
       ) : (
         <code className="bg-gray-100 px-1.5 py-0.5 rounded text-sm font-mono text-gray-800" {...props}>
