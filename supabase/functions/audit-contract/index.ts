@@ -76,11 +76,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Process code to prevent markdown code block interference
-    // Replace any triple backticks in the code with escaped version to prevent
-    // premature closing of the markdown code block
-    const processedCode = sanitizedCode.replace(/```/g, '``` ');
-    // Function to escape markdown special characters
+    // Function to escape markdown special characters in text fields only
     const escapeMarkdown = (text: string): string => {
       if (!text) return text;
       return text
@@ -126,9 +122,8 @@ ${projectContext ? `**Project Context:**
 ${escapeMarkdown(description)}
 
 ` : ''}**Smart Contract Code:**
-\`\`\`solidity
-${processedCode}
-\`\`\``;
+
+${sanitizedCode}`;
 
     // Calculate approximate token count (rough estimate: 1 token ≈ 4 characters)
     const estimatedTokens = Math.ceil(
