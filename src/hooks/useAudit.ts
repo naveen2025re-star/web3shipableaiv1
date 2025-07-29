@@ -120,20 +120,6 @@ export function useAudit() {
     
     return finalLines.join('\n');
   };
-      
-      return true;
-    });
-    
-    // Remove leading and trailing empty lines
-    while (cleanedLines.length > 0 && cleanedLines[0].trim() === '') {
-      cleanedLines.shift();
-    }
-    while (cleanedLines.length > 0 && cleanedLines[cleanedLines.length - 1].trim() === '') {
-      cleanedLines.pop();
-    }
-    
-    return cleanedLines.join('\n');
-  };
 
   // Helper function to extract severity from text
   const extractSeverity = (text: string): Finding['severity'] => {
