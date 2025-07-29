@@ -2,6 +2,13 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 
+export interface ChatSession {
+  id: string;
+  title: string;
+  created_at: string;
+  updated_at: string;
+}
+
 interface Finding {
   vulnerabilityName: string;
   severity: 'Critical' | 'High' | 'Medium' | 'Low' | 'Informational';
@@ -43,6 +50,35 @@ export function useChatSessions() {
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [allSessions, setAllSessions] = useState<ChatSession[]>([]);
+
+  // Load all chat sessions for the current user
+  const loadAllChatSessions = async () => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('chat_sessions')
+        .select('id, title, created_at, updated_at')
+        .eq('user_id', user.id)
+        .eq('is_archived', false)
+        .order('updated_at', { ascending: false });
+
+      if (error) throw error;
+      setAllSessions(data || []);
+    } catch (error) {
+      console.error('Error loading all sessions:', error);
+    }
+  };
+
+  // Load all sessions when user changes
+  useEffect(() => {
+    if (user) {
+      loadAllChatSessions();
+    } else {
+      setAllSessions([]);
+    }
+  }, [user]);
 
   // Create a new chat session
   const createNewSession = async (title: string = 'New Audit Session') => {
@@ -62,6 +98,10 @@ export function useChatSessions() {
       
       setCurrentSessionId(data.id);
       setMessages([]);
+      
+      // Refresh the sessions list
+      await loadAllChatSessions();
+      
       return data.id;
     } catch (error) {
       console.error('Error creating session:', error);
@@ -78,7 +118,6 @@ export function useChatSessions() {
         .from('messages')
         .select('*')
         .eq('chat_session_id', sessionId)
-        .eq('user_id', user.id)
         .eq('user_id', user.id)
         .order('created_at', { ascending: true });
 
@@ -128,6 +167,9 @@ export function useChatSessions() {
         .eq('id', currentSessionId)
         .eq('user_id', user.id);
 
+      // Refresh the sessions list to reflect the updated timestamp
+      await loadAllChatSessions();
+
     } catch (error) {
       console.error('Error saving message:', error);
     }
@@ -143,6 +185,9 @@ export function useChatSessions() {
         .update({ title })
         .eq('id', sessionId)
         .eq('user_id', user.id);
+      
+      // Refresh the sessions list to reflect the updated title
+      await loadAllChatSessions();
     } catch (error) {
       console.error('Error updating session title:', error);
     }
@@ -152,6 +197,7 @@ export function useChatSessions() {
     currentSessionId,
     messages,
     isLoading,
+    allSessions,
     setMessages,
     setIsLoading,
     createNewSession,

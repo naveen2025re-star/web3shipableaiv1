@@ -2,53 +2,19 @@ import React, { useState, useEffect } from 'react';
 import { Plus, MessageSquare, Settings, LogOut, User, Trash2, Edit3 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-
-interface ChatSession {
-  id: string;
-  title: string;
-  created_at: string;
-  updated_at: string;
-}
+import { ChatSession } from '../hooks/useChatSessions';
 
 interface SidebarProps {
   currentSessionId: string | null;
+  sessions: ChatSession[];
   onSessionSelect: (sessionId: string) => void;
   onNewChat: () => void;
 }
 
-export default function Sidebar({ currentSessionId, onSessionSelect, onNewChat }: SidebarProps) {
+export default function Sidebar({ currentSessionId, sessions, onSessionSelect, onNewChat }: SidebarProps) {
   const { user, signOut } = useAuth();
-  const [sessions, setSessions] = useState<ChatSession[]>([]);
-  const [loading, setLoading] = useState(true);
   const [editingSession, setEditingSession] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
-
-  useEffect(() => {
-    if (user) {
-      loadSessions();
-    }
-  }, [user]);
-
-  const loadSessions = async () => {
-    if (!user) return;
-
-    try {
-      const { data, error } = await supabase
-        .from('chat_sessions')
-        .select('id, title, created_at, updated_at')
-        .eq('user_id', user.id)
-        .eq('is_archived', false)
-        .eq('is_archived', false)
-        .order('updated_at', { ascending: false });
-
-      if (error) throw error;
-      setSessions(data || []);
-    } catch (error) {
-      console.error('Error loading sessions:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const deleteSession = async (sessionId: string) => {
     if (!user) return;
@@ -58,12 +24,9 @@ export default function Sidebar({ currentSessionId, onSessionSelect, onNewChat }
         .from('chat_sessions')
         .update({ is_archived: true })
         .eq('id', sessionId)
-        .eq('user_id', user.id);
 
       if (error) throw error;
-      
-      setSessions(prev => prev.filter(s => s.id !== sessionId));
-      
+
       // If we're deleting the current session, create a new one
       if (currentSessionId === sessionId) {
         onNewChat();
@@ -84,10 +47,6 @@ export default function Sidebar({ currentSessionId, onSessionSelect, onNewChat }
         .eq('user_id', user.id);
 
       if (error) throw error;
-      
-      setSessions(prev => prev.map(s => 
-        s.id === sessionId ? { ...s, title: newTitle.trim() } : s
-      ));
       setEditingSession(null);
     } catch (error) {
       console.error('Error updating session title:', error);
@@ -142,12 +101,7 @@ export default function Sidebar({ currentSessionId, onSessionSelect, onNewChat }
       {/* Chat Sessions */}
       <div className="flex-1 overflow-y-auto p-4 dark-scrollbar">
         <div className="space-y-2">
-          {loading ? (
-            <div className="text-center text-gray-400 py-8">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500 mx-auto"></div>
-              <p className="mt-2 text-sm">Loading chats...</p>
-            </div>
-          ) : sessions.length === 0 ? (
+          {sessions.length === 0 ? (
             <div className="text-center text-gray-400 py-8">
               <MessageSquare className="h-8 w-8 mx-auto mb-2 opacity-50" />
               <p className="text-sm">No chats yet</p>

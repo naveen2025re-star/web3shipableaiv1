@@ -10,6 +10,7 @@ export default function ChatApp() {
     currentSessionId,
     messages,
     isLoading,
+    allSessions,
     setMessages,
     setIsLoading,
     createNewSession,
@@ -58,6 +59,7 @@ export default function ChatApp() {
     <div className="h-screen flex bg-gray-50">
       <Sidebar
         currentSessionId={currentSessionId}
+        sessions={allSessions}
         onSessionSelect={handleSessionSelect}
         onNewChat={handleNewChat}
       />
