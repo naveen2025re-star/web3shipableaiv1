@@ -118,27 +118,6 @@ export function useAuditWithSessions() {
     
     return finalLines.join('\n');
   };
-      if (trimmedLine.startsWith('function ') && trimmedLine.includes('(')) return false;
-      if (trimmedLine === '}' || /^}\s*\/\//.test(trimmedLine)) return false;
-      if (trimmedLine.startsWith('// Function:') || 
-          trimmedLine.startsWith('// Start of') || 
-          trimmedLine.startsWith('// End of') || 
-          trimmedLine.startsWith('// Vulnerable function') ||
-          trimmedLine.startsWith('// This function') ||
-          trimmedLine.startsWith('// The following')) return false;
-      
-      return true;
-    });
-    
-    while (cleanedLines.length > 0 && cleanedLines[0].trim() === '') {
-      cleanedLines.shift();
-    }
-    while (cleanedLines.length > 0 && cleanedLines[cleanedLines.length - 1].trim() === '') {
-      cleanedLines.pop();
-    }
-    
-    return cleanedLines.join('\n');
-  };
 
   // Helper function to extract severity from text
   const extractSeverity = (text: string): Finding['severity'] => {
