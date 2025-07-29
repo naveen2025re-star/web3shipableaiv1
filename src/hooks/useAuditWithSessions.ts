@@ -305,7 +305,7 @@ export function useAuditWithSessions() {
     };
     
     setMessages(prev => [...prev, userMessage]);
-    await saveMessage(userMessage, currentSessionId);
+    await saveMessage(userMessage);
 
     // Update session title if this is the first message
     if (messages.length === 0) {
@@ -363,39 +363,20 @@ export function useAuditWithSessions() {
       };
       
       setMessages(prev => [...prev, assistantMessage]);
-      await saveMessage(assistantMessage, currentSessionId);
+      await saveMessage(assistantMessage);
       
     } catch (error) {
       console.error('Audit error:', error);
       
-      let errorContent = 'Unknown error occurred';
-      
-      if (error instanceof Error) {
-        try {
-          // Try to parse the error message as JSON to extract details
-          const errorData = JSON.parse(error.message);
-          if (errorData.details) {
-            errorContent = errorData.details;
-          } else if (errorData.error) {
-            errorContent = errorData.error;
-          } else {
-            errorContent = error.message;
-          }
-        } catch {
-          // If parsing fails, use the original error message
-          errorContent = error.message;
-        }
-      }
-      
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         type: 'assistant',
-        content: `❌ **Audit Failed** - ${errorContent}. Please check your configuration and try again.`,
+        content: `❌ **Audit Failed** - ${error instanceof Error ? error.message : 'Unknown error occurred'}. Please check your configuration and try again.`,
         timestamp: new Date()
       };
       
       setMessages(prev => [...prev, errorMessage]);
-      await saveMessage(errorMessage, currentSessionId);
+      await saveMessage(errorMessage);
     } finally {
       setIsLoading(false);
     }
