@@ -22,7 +22,7 @@ export default function CodeInput({ onSubmit, isLoading }: CodeInputProps) {
     if (uploadedFiles.length > 0) {
       // If files are uploaded, treat input as description
       description = input.trim();
-      code = uploadedFiles.map(file => `// File: ${file.name}\n${file.content}`).join('\n\n');
+      code = uploadedFiles.map(file => file.content).join('\n\n');
     } else if (input.trim()) {
       // If no files, check if input contains code
       const hasCodePattern = /pragma solidity|contract\s+\w+|function\s+\w+|mapping\s*\(/.test(input);

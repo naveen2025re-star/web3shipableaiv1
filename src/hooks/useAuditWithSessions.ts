@@ -290,7 +290,7 @@ export function useAuditWithSessions() {
     // Create user message
     let codeDisplay;
     if (fileName && fileCount && fileCount > 1) {
-      codeDisplay = `**Uploaded Files:** ${fileName}\n\n**Smart Contract Code:**\n\`\`\`solidity\n${code}\n\`\`\``;
+      codeDisplay = `**Uploaded Files:** ${fileCount} files (${fileName})\n\n**Smart Contract Code:**\n\`\`\`solidity\n${code}\n\`\`\``;
     } else if (fileName) {
       codeDisplay = `**Uploaded File:** \`${fileName}\`\n\n**Smart Contract Code:**\n\`\`\`solidity\n${code}\n\`\`\``;
     } else {
