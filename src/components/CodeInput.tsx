@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Shield, Plus, X, File, Send, XCircle, Upload, Sparkles, Zap } from 'lucide-react';
 
 interface CodeInputProps {
-  onSubmit: (code: string, description: string, fileName?: string, fileCount?: number) => void;
+  onSubmit: (code: string, description: string) => void;
   isLoading: boolean;
 }
 
@@ -14,37 +14,34 @@ export default function CodeInput({ onSubmit, isLoading }: CodeInputProps) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Extract description and code from input
-    const lines = input.trim().split('\n');
+    // Combine uploaded files content with manual input
+    let finalCode = '';
     let description = '';
-    let code = '';
     
     if (uploadedFiles.length > 0) {
-      // If files are uploaded, treat input as description
-      description = input.trim();
-      code = uploadedFiles.map(file => file.content).join('\n\n');
+      // If files are uploaded, combine their content
+      finalCode = uploadedFiles.map(file => file.content).join('\n\n');
+      
+      // Use manual input as description if provided
+      if (input.trim()) {
+        description = input.trim();
+      }
     } else if (input.trim()) {
-      // If no files, check if input contains code
+      // No files uploaded, check if input contains code patterns
       const hasCodePattern = /pragma solidity|contract\s+\w+|function\s+\w+|mapping\s*\(/.test(input);
       
       if (hasCodePattern) {
         // Input contains code
-        code = input.trim();
+        finalCode = input.trim();
       } else {
-        // Input is just description, no code
+        // Input is description only
         description = input.trim();
-        code = '';
       }
     }
     
-    if (code.trim() || uploadedFiles.length > 0) {
-      const finalFileName = uploadedFiles.length > 0 
-        ? uploadedFiles.length === 1 
-          ? uploadedFiles[0].name 
-          : `${uploadedFiles.length} files`
-        : undefined;
-      
-      onSubmit(code, description, finalFileName, uploadedFiles.length || undefined);
+    // Only submit if we have code to analyze
+    if (finalCode.trim()) {
+      onSubmit(finalCode, description);
       setInput('');
       setUploadedFiles([]);
       

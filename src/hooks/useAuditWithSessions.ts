@@ -281,21 +281,12 @@ export function useAuditWithSessions() {
     setMessages: React.Dispatch<React.SetStateAction<Message[]>>,
     setIsLoading: React.Dispatch<React.SetStateAction<boolean>>,
     saveMessage: (message: Message) => Promise<void>,
-    updateSessionTitle: (sessionId: string, title: string) => Promise<void>,
-    fileName?: string,
-    fileCount?: number
+    updateSessionTitle: (sessionId: string, title: string) => Promise<void>
   ) => {
     setIsLoading(true);
     
-    // Create user message
-    let codeDisplay;
-    if (fileName && fileCount && fileCount > 1) {
-      codeDisplay = `**Uploaded Files:** ${fileCount} files (${fileName})\n\n**Smart Contract Code:**\n\`\`\`solidity\n${code}\n\`\`\``;
-    } else if (fileName) {
-      codeDisplay = `**Uploaded File:** \`${fileName}\`\n\n**Smart Contract Code:**\n\`\`\`solidity\n${code}\n\`\`\``;
-    } else {
-      codeDisplay = `**Smart Contract Code:**\n\`\`\`solidity\n${code}\n\`\`\``;
-    }
+    // Create user message with code
+    const codeDisplay = `**Smart Contract Code:**\n\`\`\`solidity\n${code}\n\`\`\``;
     
     const userMessage: Message = {
       id: Date.now().toString(),

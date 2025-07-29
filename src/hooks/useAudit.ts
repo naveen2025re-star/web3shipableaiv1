@@ -290,18 +290,11 @@ export function useAudit() {
     };
   };
 
-  const performAudit = async (code: string, description: string, fileName?: string, fileCount?: number) => {
+  const performAudit = async (code: string, description: string) => {
     setIsLoading(true);
     
-    // Add user message
-    let codeDisplay;
-    if (fileName && fileCount && fileCount > 1) {
-      codeDisplay = `**Uploaded Files:** ${fileName}\n\n**Smart Contract Code:**\n\`\`\`solidity\n${code}\n\`\`\``;
-    } else if (fileName) {
-      codeDisplay = `**Uploaded File:** \`${fileName}\`\n\n**Smart Contract Code:**\n\`\`\`solidity\n${code}\n\`\`\``;
-    } else {
-      codeDisplay = `**Smart Contract Code:**\n\`\`\`solidity\n${code}\n\`\`\``;
-    }
+    // Add user message with code
+    const codeDisplay = `**Smart Contract Code:**\n\`\`\`solidity\n${code}\n\`\`\``;
     
     const userMessage: Message = {
       id: Date.now().toString(),

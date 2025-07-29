@@ -66,7 +66,7 @@ export default function ChatApp() {
     createNewSession();
   };
 
-  const handleAudit = async (code: string, description: string, fileName?: string, fileCount?: number) => {
+  const handleAudit = async (code: string, description: string) => {
     if (!currentProject) {
       alert('Please select a project first');
       return;
@@ -88,9 +88,7 @@ export default function ChatApp() {
       setMessages,
       setIsLoading,
       saveMessage,
-      updateSessionTitle,
-      fileName,
-      fileCount
+      updateSessionTitle
     );
   };
 
