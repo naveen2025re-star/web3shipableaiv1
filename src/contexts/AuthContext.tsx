@@ -20,7 +20,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      if (error) {
+        console.warn('Session retrieval error:', error.message);
+        // Clear any invalid tokens
+        supabase.auth.signOut();
+      }
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
@@ -30,6 +35,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'TOKEN_REFRESHED' && !session) {
+        // Handle failed token refresh
+        console.warn('Token refresh failed, signing out');
+        await supabase.auth.signOut();
+      }
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
@@ -50,11 +60,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { error } = await supabase.auth.signUp({
       email,
       password,
-      options: {
-        data: {
-          full_name: fullName,
-        },
-      },
       options: {
         data: {
           full_name: fullName,
