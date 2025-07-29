@@ -63,19 +63,63 @@ export function useAudit() {
       // Skip empty lines at start/end but keep internal empty lines for structure
       if (trimmedLine === '') return true;
       
+      // Remove markdown list prefixes and clean up line formatting
+      let cleanLine = trimmedLine;
+      
+      // Remove common markdown list prefixes (-, *, +, numbers)
+      cleanLine = cleanLine.replace(/^[-*+]\s*/, '');
+      cleanLine = cleanLine.replace(/^\d+\.\s*/, '');
+      cleanLine = cleanLine.replace(/^[-*+]\s*/, ''); // Double check for nested prefixes
+      
+      // Update trimmedLine to use cleaned version for further checks
+      const finalTrimmedLine = cleanLine.trim();
+      
       // Remove function declarations
-      if (trimmedLine.startsWith('function ') && trimmedLine.includes('(')) return false;
+      if (finalTrimmedLine.startsWith('function ') && finalTrimmedLine.includes('(')) return false;
       
       // Remove standalone closing braces (but keep braces that are part of code blocks)
-      if (trimmedLine === '}' || /^}\s*\/\//.test(trimmedLine)) return false;
+      if (finalTrimmedLine === '}' || /^}\s*\/\//.test(finalTrimmedLine)) return false;
       
       // Remove descriptive comments
-      if (trimmedLine.startsWith('// Function:') || 
-          trimmedLine.startsWith('// Start of') || 
-          trimmedLine.startsWith('// End of') || 
-          trimmedLine.startsWith('// Vulnerable function') ||
-          trimmedLine.startsWith('// This function') ||
-          trimmedLine.startsWith('// The following')) return false;
+      if (finalTrimmedLine.startsWith('// Function:') || 
+          finalTrimmedLine.startsWith('// Start of') || 
+          finalTrimmedLine.startsWith('// End of') || 
+          finalTrimmedLine.startsWith('// Vulnerable function') ||
+          finalTrimmedLine.startsWith('// This function') ||
+          finalTrimmedLine.startsWith('// The following')) return false;
+      
+      // Return the cleaned line instead of original
+      return cleanLine;
+    }).map(line => {
+      // Clean each line that passes the filter
+      let cleanLine = line.trim();
+      
+      // Remove markdown list prefixes
+      cleanLine = cleanLine.replace(/^[-*+]\s*/, '');
+      cleanLine = cleanLine.replace(/^\d+\.\s*/, '');
+      cleanLine = cleanLine.replace(/^[-*+]\s*/, ''); // Double check
+      
+      // Preserve original indentation structure but use cleaned content
+      const originalIndent = line.match(/^\s*/)?.[0] || '';
+      return originalIndent + cleanLine;
+    });
+    
+    // Filter out any lines that became empty after cleaning
+    const finalLines = cleanedLines.filter(line => {
+      const trimmed = line.trim();
+      return trimmed !== '' && trimmed !== '-' && trimmed !== '*' && trimmed !== '+';
+    });
+    
+    // Remove leading and trailing empty lines
+    while (finalLines.length > 0 && finalLines[0].trim() === '') {
+      finalLines.shift();
+    }
+    while (finalLines.length > 0 && finalLines[finalLines.length - 1].trim() === '') {
+      finalLines.pop();
+    }
+    
+    return finalLines.join('\n');
+  };
       
       return true;
     });
