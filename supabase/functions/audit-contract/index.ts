@@ -7,6 +7,11 @@ const corsHeaders = {
 interface AuditRequest {
   code: string;
   description?: string;
+  projectContext?: {
+    contractLanguage: string;
+    targetBlockchain: string;
+    projectName: string;
+  };
 }
 
 Deno.serve(async (req: Request) => {
@@ -29,7 +34,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const { code, description }: AuditRequest = await req.json();
+    const { code, description, projectContext }: AuditRequest = await req.json();
 
     if (!code) {
       return new Response(
@@ -39,6 +44,14 @@ Deno.serve(async (req: Request) => {
         }
       );
     }
+
+    // Build context-aware prompt
+    let contextualPrompt = '';
+    if (projectContext) {
+      contextualPrompt = `You are auditing a ${projectContext.contractLanguage} smart contract for the ${projectContext.targetBlockchain} blockchain. Project: "${projectContext.projectName}". Please provide analysis specific to ${projectContext.contractLanguage} and ${projectContext.targetBlockchain} best practices, common vulnerabilities, and security patterns.\n\n`;
+    }
+
+    const fullPrompt = `${contextualPrompt}${description ? `${description}\n\n` : ''}${code}`;
 
     // Initialize OpenAI client with Shipable AI configuration
     const openaiResponse = await fetch("https://api.shipable.ai/v3/chat/completions", {
@@ -52,7 +65,7 @@ Deno.serve(async (req: Request) => {
         messages: [
           {
             role: "user",
-            content: `${description ? `${description}\n\n` : ''}${code}`
+            content: fullPrompt
           }
         ]
       })

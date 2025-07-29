@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { Project } from './useProjects';
 
 export interface ChatSession {
   id: string;
+  project_id: string | null;
   title: string;
   created_at: string;
   updated_at: string;
@@ -45,7 +47,7 @@ interface Message {
   timestamp: Date;
 }
 
-export function useChatSessions() {
+export function useChatSessions(currentProject?: Project | null) {
   const { user } = useAuth();
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -53,16 +55,22 @@ export function useChatSessions() {
   const [allSessions, setAllSessions] = useState<ChatSession[]>([]);
 
   // Load all chat sessions for the current user
-  const loadAllChatSessions = async () => {
-    if (!user) return;
+  const loadAllChatSessions = async (projectId?: string) => {
+    if (!user || !currentProject) return;
 
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('chat_sessions')
-        .select('id, title, created_at, updated_at')
+        .select('id, project_id, title, created_at, updated_at')
         .eq('user_id', user.id)
-        .eq('is_archived', false)
-        .order('updated_at', { ascending: false });
+        .eq('is_archived', false);
+
+      // Filter by project if specified
+      if (currentProject) {
+        query = query.eq('project_id', currentProject.id);
+      }
+
+      const { data, error } = await query.order('updated_at', { ascending: false });
 
       if (error) throw error;
       setAllSessions(data || []);
@@ -71,24 +79,27 @@ export function useChatSessions() {
     }
   };
 
-  // Load all sessions when user changes
+  // Load all sessions when user or project changes
   useEffect(() => {
-    if (user) {
-      loadAllChatSessions();
+    if (user && currentProject) {
+      loadAllChatSessions(currentProject.id);
     } else {
       setAllSessions([]);
+      setCurrentSessionId(null);
+      setMessages([]);
     }
-  }, [user]);
+  }, [user, currentProject?.id]);
 
   // Create a new chat session
   const createNewSession = async (title: string = 'New Audit Session') => {
-    if (!user) return null;
+    if (!user || !currentProject) return null;
 
     try {
       const { data, error } = await supabase
         .from('chat_sessions')
         .insert({
           user_id: user.id,
+          project_id: currentProject.id,
           title,
         })
         .select()
@@ -100,7 +111,7 @@ export function useChatSessions() {
       setMessages([]);
       
       // Refresh the sessions list
-      await loadAllChatSessions();
+      await loadAllChatSessions(currentProject.id);
       
       return data.id;
     } catch (error) {
@@ -111,7 +122,7 @@ export function useChatSessions() {
 
   // Load messages for a specific session
   const loadSession = async (sessionId: string) => {
-    if (!user) return;
+    if (!user || !currentProject) return;
 
     try {
       const { data, error } = await supabase
@@ -141,7 +152,7 @@ export function useChatSessions() {
 
   // Save a message to the current session
   const saveMessage = async (message: Message) => {
-    if (!user || !currentSessionId) return;
+    if (!user || !currentSessionId || !currentProject) return;
 
     try {
       const { error } = await supabase
@@ -168,7 +179,7 @@ export function useChatSessions() {
         .eq('user_id', user.id);
 
       // Refresh the sessions list to reflect the updated timestamp
-      await loadAllChatSessions();
+      await loadAllChatSessions(currentProject.id);
 
     } catch (error) {
       console.error('Error saving message:', error);
@@ -177,7 +188,7 @@ export function useChatSessions() {
 
   // Update session title based on first message
   const updateSessionTitle = async (sessionId: string, title: string) => {
-    if (!user) return;
+    if (!user || !currentProject) return;
 
     try {
       await supabase
@@ -187,7 +198,7 @@ export function useChatSessions() {
         .eq('user_id', user.id);
       
       // Refresh the sessions list to reflect the updated title
-      await loadAllChatSessions();
+      await loadAllChatSessions(currentProject.id);
     } catch (error) {
       console.error('Error updating session title:', error);
     }

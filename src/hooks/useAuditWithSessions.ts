@@ -1,3 +1,4 @@
+import { Project } from './useProjects';
 
 interface Finding {
   vulnerabilityName: string;
@@ -236,6 +237,7 @@ export function useAuditWithSessions() {
   const performAudit = async (
     code: string,
     description: string,
+    currentProject: Project,
     currentSessionId: string,
     messages: Message[],
     setMessages: React.Dispatch<React.SetStateAction<Message[]>>,
@@ -289,7 +291,12 @@ export function useAuditWithSessions() {
         },
         body: JSON.stringify({
           code,
-          description
+          description,
+          projectContext: {
+            contractLanguage: currentProject.contract_language,
+            targetBlockchain: currentProject.target_blockchain,
+            projectName: currentProject.name
+          }
         })
       });
       
