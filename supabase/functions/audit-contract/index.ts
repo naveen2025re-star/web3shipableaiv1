@@ -95,19 +95,6 @@ Deno.serve(async (req: Request) => {
     // Build structured messages for better AI understanding
     const messages = [
       {
-        role: "system",
-        content: `You are an expert smart contract security auditor. Your task is to perform comprehensive security audits of smart contracts, identifying vulnerabilities, security risks, and providing detailed remediation guidance.
-
-Focus on:
-- Common vulnerabilities (reentrancy, overflow/underflow, access control, etc.)
-- Business logic flaws
-- Gas optimization issues
-- Best practices compliance
-- Specific blockchain and language considerations
-
-Provide detailed, actionable findings with severity ratings and clear remediation steps.`
-      },
-      {
         role: "user",
         content: `Please audit this smart contract (${sanitizedCode.length} characters):
 
