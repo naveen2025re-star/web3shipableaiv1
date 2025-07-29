@@ -321,6 +321,8 @@ export function useAuditWithSessions() {
         throw new Error('Supabase configuration is missing. Please check your environment variables.');
       }
       
+      console.log('Making audit request to edge function...');
+      
       const response = await fetch(`${supabaseUrl}/functions/v1/audit-contract`, {
         method: 'POST',
         headers: {
@@ -339,11 +341,21 @@ export function useAuditWithSessions() {
       });
       
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `HTTP ${response.status}: Failed to get audit response`);
+        const errorText = await response.text();
+        console.error('Edge function error response:', response.status, errorText);
+        
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch {
+          errorData = { error: 'Failed to parse error response' };
+        }
+        
+        throw new Error(errorData.error || errorData.details || `HTTP ${response.status}: Failed to get audit response`);
       }
       
       const data = await response.json();
+      console.log('Received audit response');
       
       if (!data.audit) {
         throw new Error('Invalid response format from audit service');

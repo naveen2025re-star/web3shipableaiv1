@@ -20,29 +20,57 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session }, error }) => {
-      if (error) {
-        console.warn('Session retrieval error:', error.message);
-        // Clear any invalid tokens
-        supabase.auth.signOut();
+    const initializeAuth = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.warn('Session retrieval error:', error.message);
+          // Clear any invalid tokens and localStorage
+          await supabase.auth.signOut();
+          localStorage.clear();
+          setSession(null);
+          setUser(null);
+        } else {
+          setSession(session);
+          setUser(session?.user ?? null);
+        }
+      } catch (err) {
+        console.error('Auth initialization error:', err);
+        // Clear everything on initialization error
+        await supabase.auth.signOut();
+        localStorage.clear();
+        setSession(null);
+        setUser(null);
+      } finally {
+        setLoading(false);
       }
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
+    };
+
+    initializeAuth();
 
     // Listen for auth changes
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth state change:', event, session?.user?.id);
+      
       if (event === 'TOKEN_REFRESHED' && !session) {
-        // Handle failed token refresh
-        console.warn('Token refresh failed, signing out');
+        console.warn('Token refresh failed, clearing session');
         await supabase.auth.signOut();
+        localStorage.clear();
       }
+      
+      if (event === 'SIGNED_OUT') {
+        localStorage.clear();
+      }
+      
       setSession(session);
       setUser(session?.user ?? null);
-      setLoading(false);
+      
+      if (event !== 'INITIAL_SESSION') {
+        setLoading(false);
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -70,7 +98,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    try {
+      await supabase.auth.signOut();
+      localStorage.clear();
+    } catch (error) {
+      console.error('Sign out error:', error);
+      // Force clear even if signOut fails
+      localStorage.clear();
+      setSession(null);
+      setUser(null);
+    }
   };
 
   const value = {
