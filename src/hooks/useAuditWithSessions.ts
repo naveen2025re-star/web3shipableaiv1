@@ -401,7 +401,7 @@ export function useAuditWithSessions() {
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         type: 'assistant',
-        content: `❌ **Audit Failed** - ${error instanceof Error ? error.message : 'Unknown error occurred'}. Please check your configuration and try again.`,
+        content: `❌ **Audit Failed** - ${error instanceof Error ? error.message : 'Unknown error occurred'}`,
         timestamp: new Date()
       };
       
