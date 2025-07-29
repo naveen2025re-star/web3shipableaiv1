@@ -93,10 +93,7 @@ Deno.serve(async (req: Request) => {
     }
 
     // Build structured messages for better AI understanding
-    const messages = [
-      {
-        role: "user",
-        content: `Please audit this smart contract (${sanitizedCode.length} characters):
+    const userMessage = `Please audit this smart contract (${sanitizedCode.length} characters):
 
 ${projectContext ? `**Project Context:**
 - Language: ${projectContext.contractLanguage}
@@ -109,13 +106,11 @@ ${description}
 ` : ''}**Smart Contract Code:**
 \`\`\`solidity
 ${sanitizedCode}
-\`\`\``
-      }
-    ];
+\`\`\``;
 
     // Calculate approximate token count (rough estimate: 1 token ≈ 4 characters)
     const estimatedTokens = Math.ceil(
-      messages.reduce((total, msg) => total + msg.content.length, 0) / 4
+      userMessage.length / 4
     );
 
     if (estimatedTokens > 190000) {
@@ -142,8 +137,9 @@ ${sanitizedCode}
         },
         body: JSON.stringify({
           model: "o3-mini",
-          messages: messages,
-          temperature: 0.1,
+          messages: [
+            { "role": "user", "content": userMessage }
+          ],
           max_tokens: Math.min(200000 - estimatedTokens, 100000)
         })
       });
