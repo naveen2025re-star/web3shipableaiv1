@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import Sidebar from '../components/Sidebar';
 import ProjectSelector from '../components/ProjectSelector';
 import ProjectModal from '../components/ProjectModal';
 import ChatHistory from '../components/ChatHistory';
@@ -33,6 +34,8 @@ export default function ChatApp() {
     loadSession,
     saveMessage,
     updateSessionTitle,
+    deleteChatSession,
+    updateChatSessionTitle,
   } = useChatSessions(currentProject);
 
   const { performAudit } = useAuditWithSessions();
@@ -157,100 +160,14 @@ export default function ChatApp() {
   return (
     <>
       <div className="h-screen flex bg-gray-50">
-        {/* Sidebar */}
-        <div className="w-80 bg-gray-900 text-white flex flex-col h-full">
-          {/* Project Selector */}
-          <div className="p-4 border-b border-gray-700">
-            <ProjectSelector
-              projects={projects}
-              currentProject={currentProject}
-              onProjectSelect={setCurrentProject}
-              onCreateProject={handleCreateProject}
-              onEditProject={handleEditProject}
-              onDeleteProject={handleDeleteProject}
-            />
-          </div>
-
-          {/* New Chat Button */}
-          <div className="p-4 border-b border-gray-700">
-            <button
-              onClick={handleNewChat}
-              disabled={!currentProject}
-              className="w-full flex items-center justify-center space-x-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white px-4 py-3 rounded-lg transition-colors font-medium"
-            >
-              <Plus className="h-4 w-4" />
-              <span>New Chat</span>
-            </button>
-          </div>
-
-          {/* Chat Sessions */}
-          <div className="flex-1 overflow-y-auto p-4 dark-scrollbar">
-            <div className="space-y-2">
-              {!currentProject ? (
-                <div className="text-center text-gray-400 py-8">
-                  <MessageSquare className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">Select a project</p>
-                  <p className="text-xs mt-1">to view chat sessions</p>
-                </div>
-              ) : allSessions.length === 0 ? (
-                <div className="text-center text-gray-400 py-8">
-                  <MessageSquare className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">No chats yet</p>
-                  <p className="text-xs mt-1">Start a new audit to begin</p>
-                </div>
-              ) : (
-                allSessions.map((session) => (
-                  <div
-                    key={session.id}
-                    className={`group relative rounded-lg transition-colors cursor-pointer ${
-                      currentSessionId === session.id
-                        ? 'bg-blue-700 border-l-4 border-blue-400'
-                        : 'hover:bg-gray-800'
-                    }`}
-                    onClick={() => handleSessionSelect(session.id)}
-                  >
-                    <div className="flex items-center p-3">
-                      <MessageSquare className="h-4 w-4 mr-3 flex-shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{session.title}</p>
-                        <p className="text-xs text-gray-400">{formatDate(session.updated_at)}</p>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-
-          {/* User Profile & Settings */}
-          <div className="border-t border-gray-700 p-4">
-            <div className="flex items-center space-x-3 mb-3">
-              <div className="bg-blue-600 p-2 rounded-full">
-                <User className="h-4 w-4" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">
-                  {user?.user_metadata?.full_name || user?.email || 'User'}
-                </p>
-                <p className="text-xs text-gray-400 truncate">{user?.email}</p>
-              </div>
-            </div>
-            
-            <div className="space-y-1">
-              <button className="w-full flex items-center space-x-2 text-gray-300 hover:text-white hover:bg-gray-800 px-3 py-2 rounded-lg transition-colors text-sm">
-                <Settings className="h-4 w-4" />
-                <span>Settings</span>
-              </button>
-              <button
-                onClick={signOut}
-                className="w-full flex items-center space-x-2 text-gray-300 hover:text-white hover:bg-gray-800 px-3 py-2 rounded-lg transition-colors text-sm"
-              >
-                <LogOut className="h-4 w-4" />
-                <span>Sign Out</span>
-              </button>
-            </div>
-          </div>
-        </div>
+        <Sidebar
+          currentSessionId={currentSessionId}
+          sessions={allSessions}
+          onSessionSelect={handleSessionSelect}
+          onNewChat={handleNewChat}
+          onDeleteSession={deleteChatSession}
+          onUpdateSessionTitle={updateChatSessionTitle}
+        />
         
         <div className="flex-1 flex flex-col min-h-0">
           {!currentProject ? (
@@ -285,6 +202,18 @@ export default function ChatApp() {
             </>
           )}
         </div>
+      </div>
+
+      {/* Project Selector Modal - Add this for project management */}
+      <div className="fixed top-4 left-4 z-40">
+        <ProjectSelector
+          projects={projects}
+          currentProject={currentProject}
+          onProjectSelect={setCurrentProject}
+          onCreateProject={handleCreateProject}
+          onEditProject={handleEditProject}
+          onDeleteProject={handleDeleteProject}
+        />
       </div>
 
       {/* Project Modal */}

@@ -215,5 +215,41 @@ export function useChatSessions(currentProject?: Project | null) {
     loadSession,
     saveMessage,
     updateSessionTitle,
+    deleteChatSession: async (sessionId: string) => {
+      if (!user || !currentProject) return;
+
+      try {
+        const { error } = await supabase
+          .from('chat_sessions')
+          .update({ is_archived: true })
+          .eq('id', sessionId)
+          .eq('user_id', user.id);
+
+        if (error) throw error;
+
+        // Refresh the sessions list
+        await loadAllChatSessions(currentProject.id);
+      } catch (error) {
+        console.error('Error deleting session:', error);
+      }
+    },
+    updateChatSessionTitle: async (sessionId: string, newTitle: string) => {
+      if (!user || !currentProject || !newTitle.trim()) return;
+
+      try {
+        const { error } = await supabase
+          .from('chat_sessions')
+          .update({ title: newTitle.trim() })
+          .eq('id', sessionId)
+          .eq('user_id', user.id);
+
+        if (error) throw error;
+        
+        // Refresh the sessions list
+        await loadAllChatSessions(currentProject.id);
+      } catch (error) {
+        console.error('Error updating session title:', error);
+      }
+    },
   };
 }

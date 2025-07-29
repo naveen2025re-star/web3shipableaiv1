@@ -9,48 +9,33 @@ interface SidebarProps {
   sessions: ChatSession[];
   onSessionSelect: (sessionId: string) => void;
   onNewChat: () => void;
+  onDeleteSession: (sessionId: string) => void;
+  onUpdateSessionTitle: (sessionId: string, title: string) => void;
 }
 
-export default function Sidebar({ currentSessionId, sessions, onSessionSelect, onNewChat }: SidebarProps) {
+export default function Sidebar({ 
+  currentSessionId, 
+  sessions, 
+  onSessionSelect, 
+  onNewChat,
+  onDeleteSession,
+  onUpdateSessionTitle
+}: SidebarProps) {
   const { user, signOut } = useAuth();
   const [editingSession, setEditingSession] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
 
-  const deleteSession = async (sessionId: string) => {
-    if (!user) return;
-
-    try {
-      const { error } = await supabase
-        .from('chat_sessions')
-        .update({ is_archived: true })
-        .eq('id', sessionId)
-
-      if (error) throw error;
-
-      // If we're deleting the current session, create a new one
-      if (currentSessionId === sessionId) {
-        onNewChat();
-      }
-    } catch (error) {
-      console.error('Error deleting session:', error);
+  const deleteSession = (sessionId: string) => {
+    onDeleteSession(sessionId);
+    // If we're deleting the current session, create a new one
+    if (currentSessionId === sessionId) {
+      onNewChat();
     }
   };
 
-  const updateSessionTitle = async (sessionId: string, newTitle: string) => {
-    if (!user || !newTitle.trim()) return;
-
-    try {
-      const { error } = await supabase
-        .from('chat_sessions')
-        .update({ title: newTitle.trim() })
-        .eq('id', sessionId)
-        .eq('user_id', user.id);
-
-      if (error) throw error;
-      setEditingSession(null);
-    } catch (error) {
-      console.error('Error updating session title:', error);
-    }
+  const updateSessionTitle = (sessionId: string, newTitle: string) => {
+    onUpdateSessionTitle(sessionId, newTitle);
+    setEditingSession(null);
   };
 
   const startEditing = (session: ChatSession) => {
