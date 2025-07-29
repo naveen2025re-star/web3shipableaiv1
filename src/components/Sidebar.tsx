@@ -121,7 +121,6 @@ export default function Sidebar({
                         onKeyDown={(e) => handleKeyPress(e, session.id)}
                         className="w-full bg-transparent border-none outline-none text-white text-sm"
                         autoFocus
-                        onClick={(e) => e.stopPropagation()}
                       />
                     ) : (
                       <>

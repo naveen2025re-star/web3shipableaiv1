@@ -57,12 +57,8 @@ export default function ChatApp() {
   };
 
   const handleSessionSelect = (sessionId: string) => {
-    console.log('Selecting session:', sessionId, 'Current:', currentSessionId);
-    if (sessionId !== currentSessionId && currentProject) {
-      console.log('Loading session for project:', currentProject.name);
+    if (sessionId !== currentSessionId) {
       loadSession(sessionId);
-    } else if (!currentProject) {
-      console.warn('Cannot select session: no current project');
     }
   };
 
