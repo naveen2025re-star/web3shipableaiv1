@@ -149,6 +149,24 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    // Debug: Log API key (first 8 characters only for security)
+    console.log(`Using API key: ${apiKey.substring(0, 8)}...`);
+    
+    // Validate API key format (should be UUID format)
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(apiKey)) {
+      console.error("API key format is invalid - should be UUID format");
+      return new Response(
+        JSON.stringify({ 
+          error: "Configuration error",
+          details: "API key format is invalid. Please check your SHIPABLE_AI_API_KEY configuration."
+        }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
     // Build context-aware prompt
     let contextualPrompt = '';
     if (projectContext) {
@@ -157,6 +175,22 @@ Deno.serve(async (req: Request) => {
 
     const fullPrompt = `${contextualPrompt}${validation.sanitizedDescription ? `${validation.sanitizedDescription}\n\n` : ''}${validation.sanitizedCode}`;
 
+    // Debug: Log prompt length and first 200 characters
+    console.log(`Prompt length: ${fullPrompt.length} characters`);
+    console.log(`Prompt preview: ${fullPrompt.substring(0, 200)}...`);
+
+    // Create the request payload
+    const requestPayload = {
+      model: "o3-mini",
+      messages: [
+        {
+          role: "user",
+          content: fullPrompt
+        }
+      ]
+    };
+
+    console.log(`Request payload size: ${JSON.stringify(requestPayload).length} bytes`);
     console.log("Making request to Shipable AI API...");
     
     // Use retry logic for the API call
@@ -166,29 +200,28 @@ Deno.serve(async (req: Request) => {
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${apiKey}`,
+          "User-Agent": "Supabase-Edge-Function/1.0",
         },
-        body: JSON.stringify({
-          model: "o3-mini",
-          messages: [
-            {
-              role: "user",
-              content: fullPrompt
-            }
-          ]
-        })
+        body: JSON.stringify(requestPayload)
       });
     });
 
     if (!openaiResponse.ok) {
       const errorText = await openaiResponse.text();
       console.error(`Shipable AI API Error (${openaiResponse.status}):`, errorText);
+      console.error(`Request headers:`, {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey.substring(0, 8)}...`,
+        "User-Agent": "Supabase-Edge-Function/1.0"
+      });
+      console.error(`Request payload preview:`, JSON.stringify(requestPayload).substring(0, 500));
       
       // Handle specific error cases
       if (openaiResponse.status === 401) {
         return new Response(
           JSON.stringify({ 
             error: "Authentication failed",
-            details: "Invalid API key. Please check your SHIPABLE_AI_API_KEY configuration."
+            details: `Invalid API key. Please verify your SHIPABLE_AI_API_KEY (${apiKey.substring(0, 8)}...) is correct.`
           }),
           {
             status: 500,
@@ -214,7 +247,7 @@ Deno.serve(async (req: Request) => {
         return new Response(
           JSON.stringify({ 
             error: "External service temporarily unavailable",
-            details: "The AI service is experiencing issues. This has been automatically retried. Please try again in a few minutes."
+            details: `The AI service returned a 500 error: ${errorText}. This has been automatically retried. Please try again in a few minutes.`
           }),
           {
             status: 503,
@@ -226,7 +259,7 @@ Deno.serve(async (req: Request) => {
       return new Response(
         JSON.stringify({ 
           error: "Failed to process audit request",
-          details: `External AI service returned ${openaiResponse.status}. Please try again or contact support if the problem continues.`
+          details: `External AI service returned ${openaiResponse.status}: ${errorText}. Please try again or contact support if the problem continues.`
         }),
         {
           status: 500,
@@ -236,7 +269,10 @@ Deno.serve(async (req: Request) => {
     }
 
     const completion = await openaiResponse.json();
-    console.log("Received response from Shipable AI API");
+    console.log("Received response from Shipable AI API:", {
+      choices: completion.choices?.length || 0,
+      usage: completion.usage || 'not provided'
+    });
     
     if (!completion.choices || !completion.choices[0] || !completion.choices[0].message) {
       console.error("Invalid response structure:", completion);
@@ -253,7 +289,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const auditResult = completion.choices[0].message.content;
-    console.log("Audit completed successfully");
+    console.log(`Audit completed successfully. Response length: ${auditResult?.length || 0} characters`);
 
     return new Response(
       JSON.stringify({
@@ -269,6 +305,7 @@ Deno.serve(async (req: Request) => {
 
   } catch (error) {
     console.error("Edge function error:", error);
+    console.error("Error stack:", error instanceof Error ? error.stack : 'No stack trace');
     
     return new Response(
       JSON.stringify({ 
