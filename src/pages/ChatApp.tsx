@@ -325,14 +325,3 @@ export default function ChatApp() {
     </>
   );
 }
-
-// Remove the old Sidebar import since we're now using inline sidebar
-// import Sidebar from '../components/Sidebar';
-        />
-        <div className="flex-shrink-0 p-4 bg-white border-t border-gray-200">
-          <CodeInput onSubmit={handleAudit} isLoading={isLoading} />
-        </div>
-      </div>
-    </div>
-  );
-}
