@@ -342,7 +342,12 @@ export function useAuditWithSessions() {
       
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('Edge function error response:', response.status, errorText);
+        console.error('Edge function error response:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorText,
+          codeLength: code.length
+        });
         
         let errorData;
         try {
@@ -351,11 +356,33 @@ export function useAuditWithSessions() {
           errorData = { error: 'Failed to parse error response' };
         }
         
-        throw new Error(errorData.error || errorData.details || `HTTP ${response.status}: Failed to get audit response`);
+        // Create more user-friendly error messages
+        let userMessage = errorData.error || 'Failed to process audit request';
+        
+        if (errorData.suggestions && Array.isArray(errorData.suggestions)) {
+          userMessage += '\n\nSuggestions:\n' + errorData.suggestions.map(s => `• ${s}`).join('\n');
+        } else if (errorData.details) {
+          userMessage += `\n\nDetails: ${errorData.details}`;
+        }
+        
+        // Add specific guidance based on error type
+        if (response.status === 400) {
+          if (errorData.error?.includes('too large') || errorData.details?.includes('size')) {
+            userMessage += '\n\n💡 Try reducing the code size or splitting into smaller files.';
+          }
+        } else if (response.status === 503 || response.status >= 500) {
+          userMessage += '\n\n💡 This appears to be a temporary service issue. Please try again in a few minutes.';
+        }
+        
+        throw new Error(userMessage);
       }
       
       const data = await response.json();
-      console.log('Received audit response');
+      console.log('Received audit response', {
+        hasAudit: !!data.audit,
+        auditLength: data.audit?.length || 0,
+        metadata: data.metadata
+      });
       
       if (!data.audit) {
         throw new Error('Invalid response format from audit service');
