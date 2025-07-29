@@ -56,26 +56,33 @@ export function useChatSessions(currentProject?: Project | null) {
 
   // Load all chat sessions for the current user
   const loadAllChatSessions = async (projectId?: string) => {
-    if (!user || !currentProject) return;
+    if (!user) {
+      setAllSessions([]);
+      return;
+    }
+
+    if (!currentProject) {
+      setAllSessions([]);
+      return;
+    }
 
     try {
       let query = supabase
         .from('chat_sessions')
         .select('id, project_id, title, created_at, updated_at')
         .eq('user_id', user.id)
-        .eq('is_archived', false);
-
-      // Filter by project if specified
-      if (currentProject) {
-        query = query.eq('project_id', currentProject.id);
-      }
+        .eq('is_archived', false)
+        .eq('project_id', currentProject.id);
 
       const { data, error } = await query.order('updated_at', { ascending: false });
 
       if (error) throw error;
+      
+      console.log(`Loaded ${data?.length || 0} sessions for project ${currentProject.name} (${currentProject.id})`);
       setAllSessions(data || []);
     } catch (error) {
       console.error('Error loading all sessions:', error);
+      setAllSessions([]);
     }
   };
 
@@ -122,16 +129,39 @@ export function useChatSessions(currentProject?: Project | null) {
 
   // Load messages for a specific session
   const loadSession = async (sessionId: string) => {
-    if (!user || !currentProject) return;
+    if (!user || !currentProject) {
+      console.warn('Cannot load session: missing user or project');
+      return;
+    }
 
     // Don't reload if it's already the current session
-    if (sessionId === currentSessionId) return;
+    if (sessionId === currentSessionId) {
+      console.log('Session already loaded:', sessionId);
+      return;
+    }
 
     try {
+      console.log('Loading session:', sessionId);
+      
+      // First verify the session belongs to the current user and project
+      const { data: sessionData, error: sessionError } = await supabase
+        .from('chat_sessions')
+        .select('id, user_id, project_id')
+        .eq('id', sessionId)
+        .eq('user_id', user.id)
+        .eq('project_id', currentProject.id)
+        .single();
+
+      if (sessionError || !sessionData) {
+        console.error('Session not found or access denied:', sessionError);
+        return;
+      }
+
       const { data, error } = await supabase
         .from('messages')
         .select('*')
         .eq('chat_session_id', sessionId)
+        .eq('user_id', user.id)
         .order('created_at', { ascending: true });
 
       if (error) throw error;
@@ -148,19 +178,25 @@ export function useChatSessions(currentProject?: Project | null) {
       setMessages(loadedMessages);
       setCurrentSessionId(sessionId);
       
-      console.log(`Loaded ${loadedMessages.length} messages for session ${sessionId}`);
+      console.log(`Successfully loaded ${loadedMessages.length} messages for session ${sessionId}`);
     } catch (error) {
       console.error('Error loading session:', error);
       // Clear messages if there's an error
       setMessages([]);
+      setCurrentSessionId(null);
     }
   };
 
   // Save a message to the current session
   const saveMessage = async (message: Message) => {
-    if (!user || !currentSessionId || !currentProject) return;
+    if (!user || !currentSessionId || !currentProject) {
+      console.error('Cannot save message: missing user, session, or project');
+      return;
+    }
 
     try {
+      console.log('Saving message to session:', currentSessionId);
+      
       const { error } = await supabase
         .from('messages')
         .insert({
@@ -176,6 +212,8 @@ export function useChatSessions(currentProject?: Project | null) {
         });
 
       if (error) throw error;
+
+      console.log('Message saved successfully');
 
       // Update session's updated_at timestamp
       await supabase
@@ -194,17 +232,25 @@ export function useChatSessions(currentProject?: Project | null) {
 
   // Update session title based on first message
   const updateSessionTitle = async (sessionId: string, title: string) => {
-    if (!user || !currentProject) return;
+    if (!user || !currentProject) {
+      console.error('Cannot update session title: missing user or project');
+      return;
+    }
 
     try {
+      console.log('Updating session title:', sessionId, title);
+      
       await supabase
         .from('chat_sessions')
         .update({ title })
         .eq('id', sessionId)
-        .eq('user_id', user.id);
+        .eq('user_id', user.id)
+        .eq('project_id', currentProject.id);
       
       // Refresh the sessions list to reflect the updated title
       await loadAllChatSessions(currentProject.id);
+      
+      console.log('Session title updated successfully');
     } catch (error) {
       console.error('Error updating session title:', error);
     }
@@ -222,37 +268,59 @@ export function useChatSessions(currentProject?: Project | null) {
     saveMessage,
     updateSessionTitle,
     deleteChatSession: async (sessionId: string) => {
-      if (!user || !currentProject) return;
+      if (!user || !currentProject) {
+        console.error('Cannot delete session: missing user or project');
+        return;
+      }
 
       try {
+        console.log('Deleting session:', sessionId);
+        
         const { error } = await supabase
           .from('chat_sessions')
           .update({ is_archived: true })
           .eq('id', sessionId)
-          .eq('user_id', user.id);
+          .eq('user_id', user.id)
+          .eq('project_id', currentProject.id);
 
         if (error) throw error;
 
+        // If we're deleting the current session, clear it
+        if (currentSessionId === sessionId) {
+          setCurrentSessionId(null);
+          setMessages([]);
+        }
+
         // Refresh the sessions list
         await loadAllChatSessions(currentProject.id);
+        
+        console.log('Session deleted successfully');
       } catch (error) {
         console.error('Error deleting session:', error);
       }
     },
     updateChatSessionTitle: async (sessionId: string, newTitle: string) => {
-      if (!user || !currentProject || !newTitle.trim()) return;
+      if (!user || !currentProject || !newTitle.trim()) {
+        console.error('Cannot update session title: missing user, project, or title');
+        return;
+      }
 
       try {
+        console.log('Updating chat session title:', sessionId, newTitle);
+        
         const { error } = await supabase
           .from('chat_sessions')
           .update({ title: newTitle.trim() })
           .eq('id', sessionId)
-          .eq('user_id', user.id);
+          .eq('user_id', user.id)
+          .eq('project_id', currentProject.id);
 
         if (error) throw error;
         
         // Refresh the sessions list
         await loadAllChatSessions(currentProject.id);
+        
+        console.log('Chat session title updated successfully');
       } catch (error) {
         console.error('Error updating session title:', error);
       }
