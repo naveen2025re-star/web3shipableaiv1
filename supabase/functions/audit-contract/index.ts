@@ -76,6 +76,24 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    // Function to escape markdown special characters
+    const escapeMarkdown = (text: string): string => {
+      if (!text) return text;
+      return text
+        .replace(/`/g, '\\`')           // Escape backticks
+        .replace(/\*/g, '\\*')          // Escape asterisks
+        .replace(/_/g, '\\_')           // Escape underscores
+        .replace(/~/g, '\\~')           // Escape tildes
+        .replace(/\|/g, '\\|')          // Escape pipes
+        .replace(/\[/g, '\\[')          // Escape square brackets
+        .replace(/\]/g, '\\]')          // Escape square brackets
+        .replace(/\(/g, '\\(')          // Escape parentheses
+        .replace(/\)/g, '\\)')          // Escape parentheses
+        .replace(/#/g, '\\#')           // Escape hash symbols
+        .replace(/>/g, '\\>')           // Escape greater than
+        .replace(/</g, '\\<');          // Escape less than
+    };
+
     // Check for API key
     const apiKey = Deno.env.get("SHIPABLE_AI_API_KEY");
     if (!apiKey) {
@@ -96,12 +114,12 @@ Deno.serve(async (req: Request) => {
     const userMessage = `Please audit this smart contract (${sanitizedCode.length} characters):
 
 ${projectContext ? `**Project Context:**
-- Language: ${projectContext.contractLanguage}
-- Blockchain: ${projectContext.targetBlockchain}
-- Project: ${projectContext.projectName}
+- Language: ${escapeMarkdown(projectContext.contractLanguage)}
+- Blockchain: ${escapeMarkdown(projectContext.targetBlockchain)}
+- Project: ${escapeMarkdown(projectContext.projectName)}
 
 ` : ''}${description ? `**Description:**
-${description}
+${escapeMarkdown(description)}
 
 ` : ''}**Smart Contract Code:**
 \`\`\`solidity
