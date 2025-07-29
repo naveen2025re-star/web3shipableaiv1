@@ -305,7 +305,7 @@ export function useAuditWithSessions() {
     };
     
     setMessages(prev => [...prev, userMessage]);
-    await saveMessage(userMessage);
+    await saveMessage(userMessage, currentSessionId);
 
     // Update session title if this is the first message
     if (messages.length === 0) {
@@ -363,7 +363,7 @@ export function useAuditWithSessions() {
       };
       
       setMessages(prev => [...prev, assistantMessage]);
-      await saveMessage(assistantMessage);
+      await saveMessage(assistantMessage, currentSessionId);
       
     } catch (error) {
       console.error('Audit error:', error);
@@ -376,7 +376,7 @@ export function useAuditWithSessions() {
       };
       
       setMessages(prev => [...prev, errorMessage]);
-      await saveMessage(errorMessage);
+      await saveMessage(errorMessage, currentSessionId);
     } finally {
       setIsLoading(false);
     }

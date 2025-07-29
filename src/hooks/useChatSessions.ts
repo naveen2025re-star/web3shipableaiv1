@@ -188,19 +188,25 @@ export function useChatSessions(currentProject?: Project | null) {
   };
 
   // Save a message to the current session
-  const saveMessage = async (message: Message) => {
-    if (!user || !currentSessionId || !currentProject) {
-      console.error('Cannot save message: missing user, session, or project');
+  const saveMessage = async (message: Message, sessionId?: string) => {
+    const targetSessionId = sessionId || currentSessionId;
+    
+    if (!user || !targetSessionId || !currentProject) {
+      console.error('Cannot save message: missing user, session, or project', {
+        hasUser: !!user,
+        sessionId: targetSessionId,
+        hasProject: !!currentProject
+      });
       return;
     }
 
     try {
-      console.log('Saving message to session:', currentSessionId);
+      console.log('Saving message to session:', targetSessionId);
       
       const { error } = await supabase
         .from('messages')
         .insert({
-          chat_session_id: currentSessionId,
+          chat_session_id: targetSessionId,
           user_id: user.id,
           content: message.content,
           role: message.type,
@@ -219,7 +225,7 @@ export function useChatSessions(currentProject?: Project | null) {
       await supabase
         .from('chat_sessions')
         .update({ updated_at: new Date().toISOString() })
-        .eq('id', currentSessionId)
+        .eq('id', targetSessionId)
         .eq('user_id', user.id);
 
       // Refresh the sessions list to reflect the updated timestamp
