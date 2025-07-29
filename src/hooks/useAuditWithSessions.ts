@@ -368,29 +368,29 @@ export function useAuditWithSessions() {
     } catch (error) {
       console.error('Audit error:', error);
       
-      let errorMessage = 'Unknown error occurred';
+      let errorContent = 'Unknown error occurred';
       
       if (error instanceof Error) {
         try {
           // Try to parse the error message as JSON to extract details
           const errorData = JSON.parse(error.message);
           if (errorData.details) {
-            errorMessage = errorData.details;
+            errorContent = errorData.details;
           } else if (errorData.error) {
-            errorMessage = errorData.error;
+            errorContent = errorData.error;
           } else {
-            errorMessage = error.message;
+            errorContent = error.message;
           }
         } catch {
           // If parsing fails, use the original error message
-          errorMessage = error.message;
+          errorContent = error.message;
         }
       }
       
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         type: 'assistant',
-        content: `❌ **Audit Failed** - ${errorMessage}. Please check your configuration and try again.`,
+        content: `❌ **Audit Failed** - ${errorContent}. Please check your configuration and try again.`,
         timestamp: new Date()
       };
       
