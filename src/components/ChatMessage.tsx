@@ -185,11 +185,30 @@ END OF REPORT
         {children}
       </h4>
     ),
-    p: ({ children }: any) => (
-      <p className="leading-relaxed text-gray-700 mb-3">
-        {children}
-      </p>
-    ),
+    p: ({ children }: any) => {
+      // Check if children contains block-level elements like code blocks
+      const hasBlockElements = React.Children.toArray(children).some((child: any) => {
+        return React.isValidElement(child) && 
+               child.type === 'div' && 
+               child.props?.className?.includes('relative group my-4');
+      });
+      
+      // If it contains block elements, render as div to avoid nesting issues
+      if (hasBlockElements) {
+        return (
+          <div className="leading-relaxed text-gray-700 mb-3">
+            {children}
+          </div>
+        );
+      }
+      
+      // Otherwise render as normal paragraph
+      return (
+        <p className="leading-relaxed text-gray-700 mb-3">
+          {children}
+        </p>
+      );
+    },
     ul: ({ children }: any) => (
       <ul className="list-disc list-inside space-y-1 my-3 ml-4">
         {children}
