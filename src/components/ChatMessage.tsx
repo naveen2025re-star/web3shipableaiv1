@@ -186,15 +186,13 @@ END OF REPORT
       </h4>
     ),
     p: ({ children }: any) => {
-      // Check if children contains block-level elements like code blocks
-      const hasBlockElements = React.Children.toArray(children).some((child: any) => {
-        return React.isValidElement(child) && 
-               child.type === 'div' && 
-               child.props?.className?.includes('relative group my-4');
+      // Check if children contains any React elements (not just text)
+      const hasReactElements = React.Children.toArray(children).some((child: any) => {
+        return React.isValidElement(child);
       });
       
-      // If it contains block elements, render as div to avoid nesting issues
-      if (hasBlockElements) {
+      // If it contains React elements, render as div to avoid nesting issues
+      if (hasReactElements) {
         return (
           <div className="leading-relaxed text-gray-700 mb-3">
             {children}
