@@ -131,11 +131,11 @@ ${sanitizedCode}
       messages.reduce((total, msg) => total + msg.content.length, 0) / 4
     );
 
-    if (estimatedTokens > 3500) {
+    if (estimatedTokens > 190000) {
       return new Response(
         JSON.stringify({ 
           error: "Request too large",
-          details: `Estimated token count (${estimatedTokens}) exceeds safe limit. Please reduce code size or description length.`
+          details: `Estimated token count (${estimatedTokens}) exceeds model limit (190,000 tokens). Please reduce code size or description length.`
         }),
         {
           status: 400,
@@ -157,7 +157,7 @@ ${sanitizedCode}
           model: "o3-mini",
           messages: messages,
           temperature: 0.1,
-          max_tokens: Math.min(4000 - estimatedTokens, 2000)
+          max_tokens: Math.min(200000 - estimatedTokens, 100000)
         })
       });
 
