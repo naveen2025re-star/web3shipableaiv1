@@ -57,7 +57,9 @@ export default function ChatApp() {
   };
 
   const handleSessionSelect = (sessionId: string) => {
-    loadSession(sessionId);
+    if (sessionId !== currentSessionId) {
+      loadSession(sessionId);
+    }
   };
 
   const handleStartNewAudit = () => {
@@ -204,8 +206,8 @@ export default function ChatApp() {
         </div>
       </div>
 
-      {/* Project Selector Modal - Add this for project management */}
-      <div className="fixed top-4 left-4 z-40">
+      {/* Project Selector - Integrated into sidebar header */}
+      <div className="absolute top-4 left-72 z-40 bg-white rounded-lg shadow-lg border border-gray-200">
         <ProjectSelector
           projects={projects}
           currentProject={currentProject}

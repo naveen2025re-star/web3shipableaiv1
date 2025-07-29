@@ -76,11 +76,11 @@ export default function ProjectSelector({
   };
 
   return (
-    <div className="relative">
+    <div className="relative min-w-[280px]">
       {/* Current Project Display */}
       <div
         onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-        className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors"
+        className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors shadow-sm"
       >
         <div className="flex items-center space-x-3">
           <FolderOpen className="h-5 w-5 text-gray-600" />
@@ -109,7 +109,7 @@ export default function ProjectSelector({
 
       {/* Dropdown Menu */}
       {isDropdownOpen && (
-        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-80 overflow-y-auto">
+        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-xl z-50 max-h-80 overflow-y-auto min-w-[280px]">
           {/* Create New Project Button */}
           <button
             onClick={() => {

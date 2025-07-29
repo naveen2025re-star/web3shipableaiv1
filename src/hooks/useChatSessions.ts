@@ -124,12 +124,14 @@ export function useChatSessions(currentProject?: Project | null) {
   const loadSession = async (sessionId: string) => {
     if (!user || !currentProject) return;
 
+    // Don't reload if it's already the current session
+    if (sessionId === currentSessionId) return;
+
     try {
       const { data, error } = await supabase
         .from('messages')
         .select('*')
         .eq('chat_session_id', sessionId)
-        .eq('user_id', user.id)
         .order('created_at', { ascending: true });
 
       if (error) throw error;
@@ -145,8 +147,12 @@ export function useChatSessions(currentProject?: Project | null) {
 
       setMessages(loadedMessages);
       setCurrentSessionId(sessionId);
+      
+      console.log(`Loaded ${loadedMessages.length} messages for session ${sessionId}`);
     } catch (error) {
       console.error('Error loading session:', error);
+      // Clear messages if there's an error
+      setMessages([]);
     }
   };
 

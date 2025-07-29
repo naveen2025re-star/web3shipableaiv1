@@ -71,9 +71,13 @@ export default function Sidebar({
   };
 
   return (
-    <div className="w-64 bg-gray-900 text-white flex flex-col h-full">
+    <div className="w-64 bg-gray-900 text-white flex flex-col h-full relative">
       {/* Header */}
       <div className="p-4 border-b border-gray-700">
+        {/* Project info at top */}
+        <div className="mb-3 text-xs text-gray-400">
+          Current Project
+        </div>
         <button
           onClick={onNewChat}
           className="w-full flex items-center justify-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg transition-colors font-medium"
