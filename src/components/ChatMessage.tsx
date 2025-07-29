@@ -76,6 +76,7 @@ const riskConfig = {
 export default function ChatMessage({ type, content, findings, summary, timestamp }: ChatMessageProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [copiedCodeBlocks, setCopiedCodeBlocks] = useState<{[key: string]: boolean}>({});
 
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -108,6 +109,14 @@ END OF REPORT
     URL.revokeObjectURL(url);
   };
 
+  const copyCodeBlock = async (code: string, blockId: string) => {
+    await navigator.clipboard.writeText(code);
+    setCopiedCodeBlocks(prev => ({ ...prev, [blockId]: true }));
+    setTimeout(() => {
+      setCopiedCodeBlocks(prev => ({ ...prev, [blockId]: false }));
+    }, 2000);
+  };
+
   // Custom components for markdown rendering
   const markdownComponents = {
     code: ({ node, inline, className, children, ...props }: any) => {
@@ -127,16 +136,29 @@ END OF REPORT
       );
       
       return !inline && isActualCode ? (
-        <SyntaxHighlighter
-          language={language}
-          style={vscDarkPlus}
-          className="my-4 rounded-lg text-sm"
-          showLineNumbers={true}
-          wrapLines={true}
-          {...props}
-        >
-          {codeContent}
-        </SyntaxHighlighter>
+        <div className="relative group my-4">
+          <SyntaxHighlighter
+            language={language}
+            style={vscDarkPlus}
+            className="rounded-lg text-sm"
+            showLineNumbers={true}
+            wrapLines={true}
+            {...props}
+          >
+            {codeContent}
+          </SyntaxHighlighter>
+          <button
+            onClick={() => copyCodeBlock(codeContent, `${node?.position?.start?.line || Math.random()}`)}
+            className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-gray-700 hover:bg-gray-600 text-white p-1.5 rounded text-xs flex items-center space-x-1"
+            title="Copy code"
+          >
+            {copiedCodeBlocks[`${node?.position?.start?.line || Math.random()}`] ? (
+              <CheckCircle className="h-3 w-3" />
+            ) : (
+              <Copy className="h-3 w-3" />
+            )}
+          </button>
+        </div>
       ) : (
         <code className="bg-gray-100 px-1.5 py-0.5 rounded text-sm font-mono text-gray-800" {...props}>
           {children}

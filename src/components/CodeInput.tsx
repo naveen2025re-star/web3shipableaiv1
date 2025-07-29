@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Shield, Plus, X, File, Send } from 'lucide-react';
+import { Shield, Plus, X, File, Send, XCircle } from 'lucide-react';
 
 interface CodeInputProps {
   onSubmit: (code: string, description: string, fileName?: string, fileCount?: number) => void;
@@ -107,6 +107,15 @@ export default function CodeInput({ onSubmit, isLoading }: CodeInputProps) {
     }
   };
 
+  const clearInput = () => {
+    setInput('');
+    const textarea = document.querySelector('textarea');
+    if (textarea) {
+      textarea.style.height = 'auto';
+      textarea.style.height = '60px';
+    }
+  };
+
   return (
     <div className="max-w-4xl mx-auto">
       <form onSubmit={handleSubmit}>
@@ -164,6 +173,18 @@ export default function CodeInput({ onSubmit, isLoading }: CodeInputProps) {
 
             {/* Action Buttons */}
             <div className="absolute right-2 bottom-2 flex items-center space-x-2">
+              {/* Clear Input Button */}
+              {input.trim() && (
+                <button
+                  type="button"
+                  onClick={clearInput}
+                  className="p-2 hover:bg-gray-100 rounded-lg cursor-pointer transition-colors"
+                  title="Clear input"
+                >
+                  <XCircle className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                </button>
+              )}
+
               {/* File Upload Button */}
               <label className="p-2 hover:bg-gray-100 rounded-lg cursor-pointer transition-colors">
                 <Plus className="h-5 w-5 text-gray-600" />
@@ -181,7 +202,7 @@ export default function CodeInput({ onSubmit, isLoading }: CodeInputProps) {
               <button
                 type="submit"
                 disabled={(!input.trim() && uploadedFiles.length === 0) || isLoading}
-                className="p-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
+                className="p-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg transition-all duration-200"
               >
                 {isLoading ? (
                   <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>

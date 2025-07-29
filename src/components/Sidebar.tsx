@@ -113,7 +113,7 @@ export default function Sidebar({ currentSessionId, sessions, onSessionSelect, o
                 key={session.id}
                 className={`group relative rounded-lg transition-colors ${
                   currentSessionId === session.id
-                    ? 'bg-blue-600'
+                    ? 'bg-blue-700 border-l-4 border-blue-400'
                     : 'hover:bg-gray-800'
                 }`}
               >
