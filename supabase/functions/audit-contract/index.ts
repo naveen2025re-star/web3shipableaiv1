@@ -83,12 +83,21 @@ Deno.serve(async (req: Request) => {
 
     // Check for API key
     const apiKey = Deno.env.get("SHIPABLE_AI_API_KEY");
+    
+    // Debug logging for API key availability
+    console.log("Environment variables check:", {
+      hasShipableKey: !!apiKey,
+      keyLength: apiKey ? apiKey.length : 0,
+      allEnvKeys: Object.keys(Deno.env.toObject()).filter(key => key.includes('SHIPABLE') || key.includes('API'))
+    });
+    
     if (!apiKey) {
       console.error("SHIPABLE_AI_API_KEY not found in environment");
+      console.error("Available environment variables:", Object.keys(Deno.env.toObject()));
       return new Response(
         JSON.stringify({ 
           error: "Configuration error",
-          details: "API key not configured"
+          details: "API key not configured - check Supabase Edge Function secrets"
         }),
         {
           status: 500,
