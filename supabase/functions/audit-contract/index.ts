@@ -47,19 +47,6 @@ Deno.serve(async (req: Request) => {
     }
 
     // Validate and sanitize input
-    if (code.length > 50000) {
-      return new Response(
-        JSON.stringify({ 
-          error: "Code too large",
-          details: "Smart contract code exceeds maximum size limit (50,000 characters)"
-        }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
-
     // Clean and sanitize the code
     const sanitizedCode = code
       .replace(/\r\n/g, '\n')  // Normalize line endings
@@ -130,18 +117,6 @@ ${sanitizedCode}`;
       userMessage.length / 4
     );
 
-    if (estimatedTokens > 190000) {
-      return new Response(
-        JSON.stringify({ 
-          error: "Request too large",
-          details: `Estimated token count (${estimatedTokens}) exceeds model limit (190,000 tokens). Please reduce code size or description length.`
-        }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
 
     try {
       console.log(`Making request to Shipable AI API... (${estimatedTokens} estimated tokens)`);
