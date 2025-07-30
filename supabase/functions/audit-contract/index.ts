@@ -131,8 +131,7 @@ ${sanitizedCode}`;
           model: "claude-3-7-sonnet-latest",
           messages: [
             { "role": "user", "content": userMessage }
-          ],
-          max_tokens: Math.min(200000 - estimatedTokens, 100000)
+          ]
         })
       });
 
