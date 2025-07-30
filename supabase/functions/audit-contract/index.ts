@@ -153,7 +153,7 @@ ${sanitizedCode}`;
           "Authorization": `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
-          model: "o3-mini",
+          model: "claude-3-7-sonnet-latest",
           messages: [
             { "role": "user", "content": userMessage }
           ],
