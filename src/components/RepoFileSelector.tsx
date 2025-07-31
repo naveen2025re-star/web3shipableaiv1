@@ -43,10 +43,13 @@ const RepoFileSelector: React.FC<RepoFileSelectorProps> = ({
       setLoading(true);
       setError(null);
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
       
-      if (!supabaseUrl || !supabaseAnonKey) {
+      if (!supabaseUrl) {
         throw new Error('Supabase configuration is missing');
+      }
+
+      if (!session?.access_token) {
+        throw new Error('Authentication required. Please sign in again.');
       }
       
       const response = await fetch(
@@ -60,12 +63,20 @@ const RepoFileSelector: React.FC<RepoFileSelectorProps> = ({
       );
 
       if (!response.ok) {
-        throw new Error('Failed to fetch repository files');
+        let errorMessage = 'Failed to fetch repository files';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch {
+          // If we can't parse the error response, use the status text
+          errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+        }
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();
       if (!data.success) {
-        throw new Error(data.error || 'Failed to fetch files');
+        throw new Error(data.error || 'Failed to fetch repository files');
       }
       
       setFiles(data.files || []);
@@ -80,6 +91,10 @@ const RepoFileSelector: React.FC<RepoFileSelectorProps> = ({
   };
 
   const fetchFileContent = async (filePath: string): Promise<string> => {
+    if (!session?.access_token) {
+      throw new Error('Authentication required. Please sign in again.');
+    }
+
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
     
     const response = await fetch(
@@ -93,7 +108,14 @@ const RepoFileSelector: React.FC<RepoFileSelectorProps> = ({
     );
 
     if (!response.ok) {
-      throw new Error(`Failed to fetch content for ${filePath}`);
+      let errorMessage = `Failed to fetch content for ${filePath}`;
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.error || errorMessage;
+      } catch {
+        errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+      }
+      throw new Error(errorMessage);
     }
 
     const data = await response.json();
