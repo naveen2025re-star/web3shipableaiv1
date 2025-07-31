@@ -10,9 +10,46 @@ export default function CodeInput({ onSubmit, isLoading }: CodeInputProps) {
   const [input, setInput] = useState('');
   const [uploadedFiles, setUploadedFiles] = useState<Array<{name: string, content: string}>>([]);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [codeStats, setCodeStats] = useState<{lines: number, functions: number, complexity: string} | null>(null);
+
+  // Smart code analysis
+  const analyzeCode = (code: string) => {
+    if (!code.trim()) {
+      setCodeStats(null);
+      return;
+    }
+    
+    const lines = code.split('\n').filter(line => line.trim().length > 0).length;
+    const functions = (code.match(/function\s+\w+/g) || []).length;
+    const contracts = (code.match(/contract\s+\w+/g) || []).length;
+    const modifiers = (code.match(/modifier\s+\w+/g) || []).length;
+    
+    const complexityScore = lines + (functions * 2) + (contracts * 3) + (modifiers * 1.5);
+    let complexity = 'Low';
+    if (complexityScore > 200) complexity = 'High';
+    else if (complexityScore > 100) complexity = 'Medium';
+    
+    setCodeStats({ lines, functions: functions + contracts, complexity });
+  };
+
+  // Debounced analysis
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (uploadedFiles.length > 0) {
+        const combinedCode = uploadedFiles.map(f => f.content).join('\n');
+        analyzeCode(combinedCode);
+      } else {
+        analyzeCode(input);
+      }
+    }, 500);
+    
+    return () => clearTimeout(timer);
+  }, [input, uploadedFiles]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setIsAnalyzing(true);
     
     // Combine uploaded files content with manual input
     let finalCode = '';
@@ -44,6 +81,7 @@ export default function CodeInput({ onSubmit, isLoading }: CodeInputProps) {
       onSubmit(finalCode, description);
       setInput('');
       setUploadedFiles([]);
+      setCodeStats(null);
       
       // Reset textarea height
       const textarea = document.querySelector('textarea');
@@ -52,6 +90,7 @@ export default function CodeInput({ onSubmit, isLoading }: CodeInputProps) {
         textarea.style.height = '60px';
       }
     }
+    setIsAnalyzing(false);
   };
 
   const handleFileUpload = (files: FileList | File[]) => {
@@ -164,6 +203,31 @@ export default function CodeInput({ onSubmit, isLoading }: CodeInputProps) {
                   </div>
                 ))}
               </div>
+              {/* Code Statistics */}
+              {codeStats && (
+                <div className="mt-3 flex items-center space-x-4 text-xs text-gray-600">
+                  <span className="flex items-center">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full mr-1"></div>
+                    {codeStats.lines} lines
+                  </span>
+                  <span className="flex items-center">
+                    <div className="w-2 h-2 bg-green-500 rounded-full mr-1"></div>
+                    {codeStats.functions} functions
+                  </span>
+                  <span className={`flex items-center px-2 py-1 rounded-full ${
+                    codeStats.complexity === 'High' ? 'bg-red-100 text-red-700' :
+                    codeStats.complexity === 'Medium' ? 'bg-yellow-100 text-yellow-700' :
+                    'bg-green-100 text-green-700'
+                  }`}>
+                    <div className={`w-2 h-2 rounded-full mr-1 ${
+                      codeStats.complexity === 'High' ? 'bg-red-500' :
+                      codeStats.complexity === 'Medium' ? 'bg-yellow-500' :
+                      'bg-green-500'
+                    }`}></div>
+                    {codeStats.complexity} complexity
+                  </span>
+                </div>
+              )}
             </div>
           )}
 
@@ -221,15 +285,23 @@ export default function CodeInput({ onSubmit, isLoading }: CodeInputProps) {
               <button
                 type="submit"
                 disabled={(!input.trim() && uploadedFiles.length === 0) || isLoading}
-                className="group p-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed text-white rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-110 disabled:transform-none"
+                className="group p-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed text-white rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-110 disabled:transform-none relative"
               >
-                {isLoading ? (
+                {isLoading || isAnalyzing ? (
                   <div className="flex items-center">
                     <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                    <Zap className="h-4 w-4" />
+                    {isAnalyzing ? (
+                      <span className="text-xs">Analyzing...</span>
+                    ) : (
+                      <Zap className="h-4 w-4" />
+                    )}
                   </div>
                 ) : (
                   <Send className="h-5 w-5 group-hover:translate-x-0.5 transition-transform" />
+                )}
+                {/* Smart indicator */}
+                {codeStats && !isLoading && !isAnalyzing && (
+                  <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
                 )}
               </button>
             </div>
@@ -260,6 +332,12 @@ export default function CodeInput({ onSubmit, isLoading }: CodeInputProps) {
               <div className="flex items-center">
                 <Upload className="h-4 w-4 mr-1 text-blue-500" />
                 <span>Drag & drop or click to upload</span>
+              </div>
+            )}
+            {codeStats && (
+              <div className="flex items-center">
+                <Sparkles className="h-4 w-4 mr-1 text-purple-500" />
+                <span>Smart analysis ready</span>
               </div>
             )}
           </div>

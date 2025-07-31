@@ -16,6 +16,8 @@ interface Finding {
   references?: string;
   cveId?: string;
   swcId?: string;
+  confidence?: number;
+  gasImpact?: string;
 }
 
 interface AuditSummary {
@@ -27,6 +29,8 @@ interface AuditSummary {
   informationalCount: number;
   riskScore: number;
   overallRisk: 'Critical' | 'High' | 'Medium' | 'Low' | 'Minimal';
+  auditDuration?: number;
+  codeComplexity?: 'Low' | 'Medium' | 'High';
 }
 
 interface ChatMessageProps {
@@ -35,6 +39,7 @@ interface ChatMessageProps {
   findings?: Finding[];
   summary?: AuditSummary;
   timestamp: Date;
+  processingTime?: number;
 }
 
 const severityConfig = {
@@ -73,7 +78,13 @@ const riskConfig = {
   Minimal: { color: 'text-green-600', bgColor: 'bg-green-100' }
 };
 
-export default function ChatMessage({ type, content, findings, summary, timestamp }: ChatMessageProps) {
+const complexityConfig = {
+  Low: { color: 'text-green-600', bgColor: 'bg-green-100' },
+  Medium: { color: 'text-yellow-600', bgColor: 'bg-yellow-100' },
+  High: { color: 'text-red-600', bgColor: 'bg-red-100' }
+};
+
+export default function ChatMessage({ type, content, findings, summary, timestamp, processingTime }: ChatMessageProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [copied, setCopied] = useState(false);
   const [copiedCodeBlocks, setCopiedCodeBlocks] = useState<{[key: string]: boolean}>({});
@@ -295,15 +306,27 @@ END OF REPORT
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center space-x-2">
                     {summary && (
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        summary.overallRisk === 'Critical' ? 'bg-red-100 text-red-800' :
-                        summary.overallRisk === 'High' ? 'bg-orange-100 text-orange-800' :
-                        summary.overallRisk === 'Medium' ? 'bg-yellow-100 text-yellow-800' :
-                        summary.overallRisk === 'Low' ? 'bg-blue-100 text-blue-800' :
-                        'bg-green-100 text-green-800'
-                      }`}>
-                        {summary.totalFindings} Finding{summary.totalFindings !== 1 ? 's' : ''} • {summary.overallRisk} Risk
-                      </span>
+                      <div className="flex items-center space-x-2">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          summary.overallRisk === 'Critical' ? 'bg-red-100 text-red-800' :
+                          summary.overallRisk === 'High' ? 'bg-orange-100 text-orange-800' :
+                          summary.overallRisk === 'Medium' ? 'bg-yellow-100 text-yellow-800' :
+                          summary.overallRisk === 'Low' ? 'bg-blue-100 text-blue-800' :
+                          'bg-green-100 text-green-800'
+                        }`}>
+                          {summary.totalFindings} Finding{summary.totalFindings !== 1 ? 's' : ''} • {summary.overallRisk} Risk
+                        </span>
+                        {summary.codeComplexity && (
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${complexityConfig[summary.codeComplexity].bgColor} ${complexityConfig[summary.codeComplexity].color}`}>
+                            {summary.codeComplexity} Complexity
+                          </span>
+                        )}
+                        {summary.auditDuration && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700">
+                            {(summary.auditDuration / 1000).toFixed(1)}s
+                          </span>
+                        )}
+                      </div>
                     )}
                   </div>
                   <div className="flex items-center space-x-2">
@@ -357,8 +380,13 @@ END OF REPORT
             )}
           </div>
           
-          <div className={`text-xs text-gray-500 mt-2 ${type === 'user' ? 'text-right' : 'text-left'}`}>
-            {formatTime(timestamp)}
+          <div className={`text-xs text-gray-500 mt-2 flex items-center justify-between ${type === 'user' ? 'flex-row-reverse' : ''}`}>
+            <span>{formatTime(timestamp)}</span>
+            {processingTime && (
+              <span className="text-gray-400">
+                {type === 'user' ? 'Processed' : 'Generated'} in {(processingTime / 1000).toFixed(1)}s
+              </span>
+            )}
           </div>
         </div>
       </div>

@@ -1,5 +1,6 @@
 import { Project } from './useProjects';
 
+// Enhanced types with better validation
 interface Finding {
   vulnerabilityName: string;
   severity: 'Critical' | 'High' | 'Medium' | 'Low' | 'Informational';
@@ -11,6 +12,8 @@ interface Finding {
   references?: string;
   cveId?: string;
   swcId?: string;
+  confidence?: number; // AI confidence score
+  gasImpact?: string; // Gas optimization impact
 }
 
 interface AuditSummary {
@@ -25,6 +28,8 @@ interface AuditSummary {
   contractName?: string;
   additionalObservations?: string[];
   conclusion?: string;
+  auditDuration?: number; // Time taken for audit
+  codeComplexity?: 'Low' | 'Medium' | 'High'; // Code complexity assessment
 }
 
 interface Message {
@@ -34,9 +39,52 @@ interface Message {
   findings?: Finding[];
   summary?: AuditSummary;
   timestamp: Date;
+  processingTime?: number; // Time taken to process
 }
 
 export function useAuditWithSessions() {
+  // Enhanced code analysis with better pattern detection
+  const analyzeCodeComplexity = (code: string): 'Low' | 'Medium' | 'High' => {
+    const lines = code.split('\n').filter(line => line.trim().length > 0);
+    const functions = (code.match(/function\s+\w+/g) || []).length;
+    const modifiers = (code.match(/modifier\s+\w+/g) || []).length;
+    const events = (code.match(/event\s+\w+/g) || []).length;
+    const complexity = lines.length + (functions * 2) + (modifiers * 1.5) + (events * 0.5);
+    
+    if (complexity > 200) return 'High';
+    if (complexity > 100) return 'Medium';
+    return 'Low';
+  };
+
+  // Smart code preprocessing with better sanitization
+  const preprocessCode = (code: string): { cleanCode: string; metadata: any } => {
+    const startTime = Date.now();
+    
+    // Remove comments but preserve structure
+    const withoutComments = code
+      .replace(/\/\*[\s\S]*?\*\//g, '') // Remove block comments
+      .replace(/\/\/.*$/gm, ''); // Remove line comments
+    
+    // Normalize whitespace while preserving indentation
+    const normalized = withoutComments
+      .replace(/\r\n/g, '\n')
+      .replace(/\t/g, '    ')
+      .split('\n')
+      .map(line => line.trimEnd())
+      .join('\n')
+      .trim();
+    
+    const metadata = {
+      originalLength: code.length,
+      cleanedLength: normalized.length,
+      linesOfCode: normalized.split('\n').filter(line => line.trim().length > 0).length,
+      complexity: analyzeCodeComplexity(normalized),
+      processingTime: Date.now() - startTime
+    };
+    
+    return { cleanCode: normalized, metadata };
+  };
+
   // Helper function to extract code blocks
   const extractCodeBlocks = (text: string): string[] => {
     const codeBlockRegex = /```[\w]*\n?([\s\S]*?)\n?```/g;
@@ -151,10 +199,12 @@ export function useAuditWithSessions() {
   const parseAuditResponse = (response: string): { content: string; summary: AuditSummary; findings: Finding[] } => {
     let cleanContent = response.trim();
     const findings: Finding[] = [];
+    const parseStartTime = Date.now();
 
     const contractMatch = cleanContent.match(/####\s*Contract:\s*`([^`]+)`/);
     const contractName = contractMatch ? contractMatch[1] : 'Smart Contract';
 
+    // Enhanced vulnerability parsing with confidence scoring
     const vulnerabilityMatches = cleanContent.match(/###\s*Vulnerability\s*\d*:?\s*([^\n]+)([\s\S]*?)(?=###\s*(?:Vulnerability|Additional|Conclusion)|$)/gi);
 
     if (vulnerabilityMatches) {
@@ -181,6 +231,13 @@ export function useAuditWithSessions() {
         const references = extractBulletContent(vulnSection, 'References') ||
                          extractBulletContent(vulnSection, 'Links');
 
+        // Extract confidence and gas impact if available
+        const confidenceMatch = vulnSection.match(/confidence[:\s]*(\d+)%/i);
+        const confidence = confidenceMatch ? parseInt(confidenceMatch[1]) : undefined;
+        
+        const gasImpactMatch = vulnSection.match(/gas[:\s]*(high|medium|low|minimal)/i);
+        const gasImpact = gasImpactMatch ? gasImpactMatch[1].toLowerCase() : undefined;
+
         let impact = extractBulletContent(vulnSection, 'Impact') ||
                     extractBulletContent(vulnSection, 'Risk') ||
                     extractBulletContent(vulnSection, 'Consequence');
@@ -205,7 +262,9 @@ export function useAuditWithSessions() {
           explanation: explanation || 'Technical analysis required',
           proofOfConcept: proofOfConcept || '',
           remediation: remediation || 'Remediation steps needed',
-          references: references || ''
+          references: references || '',
+          confidence,
+          gasImpact
         });
       });
     }
@@ -256,7 +315,9 @@ export function useAuditWithSessions() {
       overallRisk: 'Minimal',
       contractName,
       additionalObservations,
-      conclusion
+      conclusion,
+      auditDuration: Date.now() - parseStartTime,
+      codeComplexity: 'Medium' // Will be set properly in performAudit
     };
 
     if (summary.criticalCount > 0) summary.overallRisk = 'Critical';
@@ -283,16 +344,21 @@ export function useAuditWithSessions() {
     saveMessage: (message: Message) => Promise<void>,
     updateSessionTitle: (sessionId: string, title: string) => Promise<void>
   ) => {
+    const auditStartTime = Date.now();
     setIsLoading(true);
     
+    // Preprocess and analyze the code
+    const { cleanCode, metadata } = preprocessCode(code);
+    
     // Create user message with code
-    const codeDisplay = `**Smart Contract Code:**\n\`\`\`solidity\n${code}\n\`\`\``;
+    const codeDisplay = `**Smart Contract Code:**\n\`\`\`${currentProject.contract_language.toLowerCase()}\n${cleanCode}\n\`\`\``;
     
     const userMessage: Message = {
       id: Date.now().toString(),
       type: 'user',
       content: `${description ? `**Contract Description:** ${description}\n\n` : ''}${codeDisplay}`,
-      timestamp: new Date()
+      timestamp: new Date(),
+      processingTime: metadata.processingTime
     };
     
     setMessages(prev => [...prev, userMessage]);
@@ -321,12 +387,13 @@ export function useAuditWithSessions() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          code,
+          code: cleanCode,
           description,
           projectContext: {
             contractLanguage: currentProject.contract_language,
             targetBlockchain: currentProject.target_blockchain,
-            projectName: currentProject.name
+            projectName: currentProject.name,
+            codeMetadata: metadata
           }
         })
       });
@@ -383,13 +450,18 @@ export function useAuditWithSessions() {
       
       const { content, summary, findings } = parseAuditResponse(auditResult);
       
+      // Enhance summary with metadata
+      summary.codeComplexity = metadata.complexity;
+      summary.auditDuration = Date.now() - auditStartTime;
+      
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         type: 'assistant',
         content: content,
         findings: findings,
         summary: summary,
-        timestamp: new Date()
+        timestamp: new Date(),
+        processingTime: Date.now() - auditStartTime
       };
       
       setMessages(prev => [...prev, assistantMessage]);
@@ -402,7 +474,8 @@ export function useAuditWithSessions() {
         id: (Date.now() + 1).toString(),
         type: 'assistant',
         content: `❌ **Audit Failed** - ${error instanceof Error ? error.message : 'Unknown error occurred'}. Please check your configuration and try again.`,
-        timestamp: new Date()
+        timestamp: new Date(),
+        processingTime: Date.now() - auditStartTime
       };
       
       setMessages(prev => [...prev, errorMessage]);
