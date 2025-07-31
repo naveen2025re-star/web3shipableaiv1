@@ -268,7 +268,7 @@ const RepoFileSelector: React.FC<RepoFileSelectorProps> = ({
       </div>
 
       {/* File List */}
-      <div className="flex-1 overflow-y-auto border border-gray-200 rounded-md p-4 mb-4">
+      <div className="flex-1 overflow-y-auto border border-gray-200 rounded-md p-4 mb-4 max-h-96">
         {files.length === 0 ? (
           <div className="text-center text-gray-500 py-8">
             <Folder className="h-12 w-12 mx-auto mb-4 text-gray-300" />
@@ -281,14 +281,14 @@ const RepoFileSelector: React.FC<RepoFileSelectorProps> = ({
                 {file.type === 'dir' ? (
                   <button
                     onClick={() => toggleDirectory(file.path)}
-                    className="flex items-center space-x-3 flex-1 text-left"
+                    className="flex items-center space-x-3 flex-1 text-left hover:bg-blue-50 rounded p-1 transition-colors"
                   >
                     <ChevronRight className="w-4 h-4 text-gray-400" />
                     {getFileIcon(file)}
-                    <span className="text-sm font-medium">{file.name}</span>
+                    <span className="text-sm font-medium text-blue-600">{file.name}</span>
                   </button>
                 ) : (
-                  <label className="flex items-center space-x-3 flex-1 cursor-pointer">
+                  <label className="flex items-center space-x-3 flex-1 cursor-pointer hover:bg-gray-50 rounded p-1 transition-colors">
                     <input
                       type="checkbox"
                       checked={selectedFiles.has(file.path)}
@@ -311,7 +311,15 @@ const RepoFileSelector: React.FC<RepoFileSelectorProps> = ({
       </div>
 
       {/* Action Buttons */}
-      <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+      <div className="flex justify-between items-center space-x-3 pt-4 border-t border-gray-200">
+        <div className="text-sm text-gray-600">
+          {selectedFiles.size > 0 && (
+            <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+              {selectedFiles.size} file{selectedFiles.size !== 1 ? 's' : ''} selected
+            </span>
+          )}
+        </div>
+        <div className="flex space-x-3">
         <button
           onClick={onCancel}
           className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
@@ -333,6 +341,7 @@ const RepoFileSelector: React.FC<RepoFileSelectorProps> = ({
             `Create Project & Analyze (${selectedFiles.size})`
           )}
         </button>
+        </div>
       </div>
     </div>
   );
