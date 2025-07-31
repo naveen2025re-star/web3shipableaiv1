@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { Github, Key, Folder, Download, AlertCircle, CheckCircle, Eye, EyeOff, FileText } from 'lucide-react';
-import { RepoFileSelector } from './RepoFileSelector';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import RepoFileSelector from './RepoFileSelector';
