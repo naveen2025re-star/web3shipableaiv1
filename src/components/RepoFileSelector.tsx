@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronRight, ChevronDown, File, Folder, Code, FileText } from 'lucide-react';
+import { ChevronRight, ChevronDown, File, Folder, Code, FileText, ArrowLeft } from 'lucide-react';
 
 interface FileItem {
   name: string;
@@ -285,25 +285,6 @@ const RepoFileSelector: React.FC<RepoFileSelectorProps> = ({
           </div>
         )}
       </div>
-          <button
-            onClick={handleAnalyzeSelected}
-            disabled={selectedFiles.size === 0 || loadingFiles}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
-          >
-            {loadingFiles ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                Loading Files...
-              </>
-            ) : (
-              `Analyze Selected Files (${selectedFiles.size})`
-            )}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
 
       {/* Action Buttons */}
       <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
@@ -334,4 +315,3 @@ const RepoFileSelector: React.FC<RepoFileSelectorProps> = ({
 };
 
 export default RepoFileSelector;
-export default RepoFileSelector
