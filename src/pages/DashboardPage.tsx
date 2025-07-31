@@ -25,6 +25,7 @@ import { useProjects, Project } from '../hooks/useProjects';
 import { useAuth } from '../contexts/AuthContext';
 import ProjectModal from '../components/ProjectModal';
 import GithubIntegration from '../components/GithubIntegration';
+import RepoFileSelector from '../components/RepoFileSelector';
 
 export default function DashboardPage() {
   const navigate = useNavigate();
