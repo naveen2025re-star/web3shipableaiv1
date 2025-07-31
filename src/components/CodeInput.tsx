@@ -96,6 +96,13 @@ export default function CodeInput({ onSubmit, isLoading }: CodeInputProps) {
     handleSubmit({ preventDefault: () => {} } as React.FormEvent, repoDetails);
   };
 
+  const handleGithubFilesSelected = (content: string, repoDetails: { owner: string; repo: string }) => {
+    setShowGithubModal(false);
+    
+    // Submit the file content for analysis
+    onSubmit(content, '', repoDetails);
+  };
+
   const handleGithubScan = () => {
     if (selectedRepo) {
       const repoDetails = {
@@ -388,7 +395,8 @@ export default function CodeInput({ onSubmit, isLoading }: CodeInputProps) {
             </div>
             <div className="p-6">
               <GithubIntegration
-                onRepositorySelect={handleGithubRepoSelect}
+                onFullRepositorySelect={handleGithubRepoSelect}
+                onFilesSelected={handleGithubFilesSelected}
                 showRepositoryList={true}
               />
             </div>

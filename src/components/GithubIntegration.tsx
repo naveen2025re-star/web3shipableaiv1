@@ -18,12 +18,14 @@ interface Repository {
 }
 
 interface GithubIntegrationProps {
-  onRepositorySelect?: (repo: Repository) => void;
+  onFullRepositorySelect?: (repo: Repository) => void;
+  onFilesSelected?: (content: string, repoDetails: { owner: string; repo: string }) => void;
   showRepositoryList?: boolean;
 }
 
 export default function GithubIntegration({ 
-  onRepositorySelect, 
+  onFullRepositorySelect,
+  onFilesSelected,
   showRepositoryList = true 
 }: GithubIntegrationProps) {
   const { user, updateUserProfile, getUserProfile } = useAuth();
@@ -140,14 +142,14 @@ export default function GithubIntegration({
   const handleRepositorySelect = (repo: Repository) => {
     setSelectedRepo(repo);
     setShowCreateProject(true);
-    if (onRepositorySelect) {
-      onRepositorySelect(repo);
+    if (onFullRepositorySelect) {
+      onFullRepositorySelect(repo);
     }
   };
 
   const handleCreateProjectFromRepo = () => {
-    if (selectedRepo && onRepositorySelect) {
-      onRepositorySelect(selectedRepo);
+    if (selectedRepo && onFullRepositorySelect) {
+      onFullRepositorySelect(selectedRepo);
       setShowCreateProject(false);
     }
   };
@@ -165,22 +167,11 @@ export default function GithubIntegration({
       `// File: ${file.path}\n${file.content}`
     ).join('\n\n' + '='.repeat(80) + '\n\n');
 
-    const analysisPrompt = `Please analyze the following files from the GitHub repository ${selectedRepoForFiles.owner}/${selectedRepoForFiles.repo}:
-
-Selected Files (${files.length}):
-${files.map(f => `- ${f.path}`).join('\n')}
-
-${fileContents}
-
-Please provide a comprehensive security analysis focusing on:
-1. Potential vulnerabilities
-2. Code quality issues
-3. Best practices violations
-4. Security recommendations
-5. Overall risk assessment`;
-
-    // Call the onRepositorySelect with the analysis prompt
-    onRepositorySelect?.(analysisPrompt, selectedRepoForFiles);
+    // Call the onFilesSelected with the file content
+    if (onFilesSelected) {
+      onFilesSelected(fileContents, selectedRepoForFiles);
+    }
+    
     setShowFileSelector(false);
     setSelectedRepoForFiles(null);
   };

@@ -408,7 +408,7 @@ export default function DashboardPage() {
                 )}
                 
                 <GithubIntegration 
-                  onRepositorySelect={handleGithubRepositorySelect}
+                  onFullRepositorySelect={handleGithubRepositorySelect}
                   showRepositoryList={true} 
                 />
               </div>

@@ -39,9 +39,8 @@ Deno.serve(async (req: Request) => {
     }
 
     const { code, description, projectContext }: AuditRequest = await req.json();
-    const { code, description, githubRepo, projectContext }: AuditRequest = await req.json();
 
-    if (!code && !githubRepo) {
+    if (!code?.trim() && !githubRepo) {
       return new Response(
         JSON.stringify({ error: "Code or GitHub repository is required" }),
         {
@@ -54,7 +53,13 @@ Deno.serve(async (req: Request) => {
     let finalCode = '';
     let codeSource = '';
 
-    if (githubRepo) {
+    // Check if code contains file content from user selection (starts with // File:)
+    if (code && code.trim().startsWith('// File:')) {
+      // User has selected specific files, use the provided content directly
+      finalCode = code;
+      codeSource = "User-selected repository files";
+      console.log("Using user-selected file content directly");
+    } else if (githubRepo && (!code || !code.trim())) {
       // Fetch code from GitHub repository
       console.log(`Fetching code from GitHub repo: ${githubRepo.owner}/${githubRepo.repo}`);
       
