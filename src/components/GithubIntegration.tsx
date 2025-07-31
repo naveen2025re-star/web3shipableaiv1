@@ -250,11 +250,12 @@ export default function GithubIntegration({
             Select Repository ({repositories.length} found)
           </h4>
           <div className="max-h-80 overflow-y-auto space-y-2 border border-gray-200 rounded-lg p-2">
+          <div className="max-h-80 overflow-y-auto space-y-2 border border-gray-200 rounded-lg p-2">
             {repositories.map((repo) => (
               <div
                 key={repo.id}
                 onClick={() => handleRepositorySelect(repo)}
-                className={`p-4 border rounded-lg cursor-pointer transition-all duration-200 hover:bg-gray-50 hover:shadow-md ${
+                className={`p-4 border rounded-lg cursor-pointer transition-all duration-200 hover:bg-gray-50 hover:shadow-md hover:border-blue-300 ${
                   selectedRepo?.id === repo.id ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
                 }`}
               >
@@ -267,7 +268,7 @@ export default function GithubIntegration({
                       <p className="text-sm font-semibold text-gray-900">{repo.name}</p>
                       <p className="text-xs text-gray-500 mb-1">{repo.full_name}</p>
                       {repo.description && (
-                        <p className="text-xs text-gray-600 line-clamp-2">{repo.description}</p>
+                        <p className="text-xs text-gray-600 truncate max-w-xs">{repo.description}</p>
                       )}
                     </div>
                   </div>

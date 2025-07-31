@@ -18,7 +18,8 @@ import {
   Filter,
   Grid,
   List,
-  Github
+  Github,
+  X
 } from 'lucide-react';
 import { useProjects, Project } from '../hooks/useProjects';
 import { useAuth } from '../contexts/AuthContext';
@@ -45,6 +46,7 @@ export default function DashboardPage() {
   const [filterBlockchain, setFilterBlockchain] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [showGithubIntegration, setShowGithubIntegration] = useState(false);
+  const [isCreatingFromGithub, setIsCreatingFromGithub] = useState(false);
 
   const handleCreateProject = () => {
     setProjectModalMode('create');
@@ -95,6 +97,48 @@ export default function DashboardPage() {
     setCurrentProject(project);
     localStorage.setItem('currentProject', JSON.stringify(project));
     navigate('/app');
+  };
+
+  const handleGithubRepositorySelect = async (repo: any) => {
+    setIsCreatingFromGithub(true);
+    
+    try {
+      // Determine the contract language based on the repository language
+      const languageMapping: { [key: string]: string } = {
+        'Solidity': 'Solidity',
+        'JavaScript': 'JavaScript', 
+        'TypeScript': 'TypeScript',
+        'Rust': 'Rust',
+        'Python': 'Python',
+        'Go': 'Go',
+        'Java': 'Java'
+      };
+      
+      const contractLanguage = languageMapping[repo.language] || 'Solidity';
+      const projectName = `${repo.name} (GitHub)`;
+      
+      // Create project from GitHub repo
+      const newProject = await createProject(projectName, contractLanguage, 'Ethereum');
+      
+      if (newProject) {
+        // Set as current project and navigate to chat
+        setCurrentProject(newProject);
+        
+        // Store repo details for scanning
+        localStorage.setItem('pendingGithubScan', JSON.stringify({
+          owner: repo.owner.login,
+          repo: repo.name,
+          projectId: newProject.id
+        }));
+        
+        navigate('/app');
+      }
+    } catch (error) {
+      console.error('Error creating project from GitHub repo:', error);
+      alert('Failed to create project from repository');
+    } finally {
+      setIsCreatingFromGithub(false);
+    }
   };
 
   const getLanguageColor = (language: string) => {
@@ -337,7 +381,37 @@ export default function DashboardPage() {
           {/* GitHub Integration Section */}
           {showGithubIntegration && (
             <div className="mb-8">
-              <GithubIntegration showRepositoryList={false} />
+              <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center space-x-3">
+                    <div className="bg-gray-900 p-2 rounded-lg">
+                      <Github className="h-5 w-5 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900">GitHub Integration</h3>
+                      <p className="text-sm text-gray-600">Import and scan repositories directly</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setShowGithubIntegration(false)}
+                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                  >
+                    <X className="h-5 w-5 text-gray-500" />
+                  </button>
+                </div>
+                
+                {isCreatingFromGithub && (
+                  <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-center space-x-2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                    <span className="text-blue-700 text-sm">Creating project from repository...</span>
+                  </div>
+                )}
+                
+                <GithubIntegration 
+                  onRepositorySelect={handleGithubRepositorySelect}
+                  showRepositoryList={true} 
+                />
+              </div>
             </div>
           )}
 

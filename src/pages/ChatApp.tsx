@@ -47,6 +47,28 @@ export default function ChatApp() {
     // If no user, redirect will be handled by route protection
     if (!user) return;
 
+    // Check for pending GitHub scan
+    const pendingGithubScan = localStorage.getItem('pendingGithubScan');
+    if (pendingGithubScan && currentProject) {
+      try {
+        const scanData = JSON.parse(pendingGithubScan);
+        if (scanData.projectId === currentProject.id) {
+          // Clear the pending scan
+          localStorage.removeItem('pendingGithubScan');
+          
+          // Trigger GitHub repository scan
+          setTimeout(() => {
+            handleAudit('', `Scanning GitHub repository: ${scanData.owner}/${scanData.repo}`, {
+              owner: scanData.owner,
+              repo: scanData.repo
+            });
+          }, 1000);
+        }
+      } catch (error) {
+        console.error('Error processing pending GitHub scan:', error);
+        localStorage.removeItem('pendingGithubScan');
+      }
+    }
     console.log('ChatApp useEffect - projects:', projects.length, 'currentProject:', currentProject?.name || 'null');
     
     if (projects.length === 0) {

@@ -87,6 +87,13 @@ export default function CodeInput({ onSubmit, isLoading }: CodeInputProps) {
   const handleGithubRepoSelect = (repo: Repository) => {
     setSelectedRepo(repo);
     setShowGithubModal(false);
+    
+    // Automatically trigger scan when repo is selected
+    const repoDetails = {
+      owner: repo.owner.login,
+      repo: repo.name,
+    };
+    handleSubmit({ preventDefault: () => {} } as React.FormEvent, repoDetails);
   };
 
   const handleGithubScan = () => {
