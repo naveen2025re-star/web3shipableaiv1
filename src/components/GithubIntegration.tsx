@@ -35,6 +35,7 @@ export default function GithubIntegration({
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [hasSavedPat, setHasSavedPat] = useState(false);
+  const [showCreateProject, setShowCreateProject] = useState(false);
 
   // Load existing PAT on component mount
   useEffect(() => {
@@ -118,6 +119,7 @@ export default function GithubIntegration({
       
       if (data.repositories) {
         setRepositories(data.repositories);
+        console.log('Repositories fetched successfully:', data.repositories.length);
         if (data.repositories.length === 0) {
           setError('No repositories found in your GitHub account');
         }
@@ -134,8 +136,16 @@ export default function GithubIntegration({
 
   const handleRepositorySelect = (repo: Repository) => {
     setSelectedRepo(repo);
+    setShowCreateProject(true);
     if (onRepositorySelect) {
       onRepositorySelect(repo);
+    }
+  };
+
+  const handleCreateProjectFromRepo = () => {
+    if (selectedRepo && onRepositorySelect) {
+      onRepositorySelect(selectedRepo);
+      setShowCreateProject(false);
     }
   };
 
@@ -239,21 +249,26 @@ export default function GithubIntegration({
           <h4 className="text-sm font-medium text-gray-900 mb-3">
             Select Repository ({repositories.length} found)
           </h4>
-          <div className="max-h-64 overflow-y-auto space-y-2">
+          <div className="max-h-80 overflow-y-auto space-y-2 border border-gray-200 rounded-lg p-2">
             {repositories.map((repo) => (
               <div
                 key={repo.id}
                 onClick={() => handleRepositorySelect(repo)}
-                className={`p-3 border rounded-lg cursor-pointer transition-colors hover:bg-gray-50 ${
+                className={`p-4 border rounded-lg cursor-pointer transition-all duration-200 hover:bg-gray-50 hover:shadow-md ${
                   selectedRepo?.id === repo.id ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
                 }`}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
-                    <Folder className="h-4 w-4 text-gray-600" />
+                    <div className="bg-gray-100 p-2 rounded-lg">
+                      <Folder className="h-4 w-4 text-gray-600" />
+                    </div>
                     <div>
-                      <p className="text-sm font-medium text-gray-900">{repo.name}</p>
-                      <p className="text-xs text-gray-500">{repo.full_name}</p>
+                      <p className="text-sm font-semibold text-gray-900">{repo.name}</p>
+                      <p className="text-xs text-gray-500 mb-1">{repo.full_name}</p>
+                      {repo.description && (
+                        <p className="text-xs text-gray-600 line-clamp-2">{repo.description}</p>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center space-x-2">
@@ -269,9 +284,6 @@ export default function GithubIntegration({
                     )}
                   </div>
                 </div>
-                {repo.description && (
-                  <p className="text-xs text-gray-600 mt-1 ml-7">{repo.description}</p>
-                )}
               </div>
             ))}
           </div>
@@ -280,10 +292,29 @@ export default function GithubIntegration({
 
       {/* Selected Repository Info */}
       {selectedRepo && (
-        <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-          <p className="text-sm text-blue-800">
-            <strong>Selected:</strong> {selectedRepo.full_name}
-          </p>
+        <div className="mt-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="bg-blue-100 p-2 rounded-lg">
+                <Github className="h-5 w-5 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-blue-900">Selected Repository</p>
+                <p className="text-sm text-blue-700">{selectedRepo.full_name}</p>
+                {selectedRepo.description && (
+                  <p className="text-xs text-blue-600 mt-1">{selectedRepo.description}</p>
+                )}
+              </div>
+            </div>
+            {showCreateProject && (
+              <button
+                onClick={handleCreateProjectFromRepo}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm"
+              >
+                Create Project & Scan
+              </button>
+            )}
+          </div>
         </div>
       )}
     </div>
