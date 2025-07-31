@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Github, Key, Folder, Download, AlertCircle, CheckCircle, Eye, EyeOff } from 'lucide-react';
+import { Github, Key, Folder, Download, AlertCircle, CheckCircle, Eye, EyeOff, FileText } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
+import RepoFileSelector from './RepoFileSelector';
 
 interface Repository {
   id: number;
@@ -36,6 +37,8 @@ export default function GithubIntegration({
   const [success, setSuccess] = useState('');
   const [hasSavedPat, setHasSavedPat] = useState(false);
   const [showCreateProject, setShowCreateProject] = useState(false);
+  const [showFileSelector, setShowFileSelector] = useState(false);
+  const [selectedRepoForFiles, setSelectedRepoForFiles] = useState<{ owner: string; repo: string } | null>(null);
 
   // Load existing PAT on component mount
   useEffect(() => {
@@ -147,6 +150,39 @@ export default function GithubIntegration({
       onRepositorySelect(selectedRepo);
       setShowCreateProject(false);
     }
+  };
+
+  const handleSelectFiles = (repo: Repository) => {
+    setSelectedRepoForFiles({ owner: repo.owner.login, repo: repo.name });
+    setShowFileSelector(true);
+  };
+
+  const handleFilesSelected = (files: { path: string; content: string }[]) => {
+    if (!selectedRepoForFiles) return;
+
+    // Create a comprehensive analysis prompt
+    const fileContents = files.map(file => 
+      `// File: ${file.path}\n${file.content}`
+    ).join('\n\n' + '='.repeat(80) + '\n\n');
+
+    const analysisPrompt = `Please analyze the following files from the GitHub repository ${selectedRepoForFiles.owner}/${selectedRepoForFiles.repo}:
+
+Selected Files (${files.length}):
+${files.map(f => `- ${f.path}`).join('\n')}
+
+${fileContents}
+
+Please provide a comprehensive security analysis focusing on:
+1. Potential vulnerabilities
+2. Code quality issues
+3. Best practices violations
+4. Security recommendations
+5. Overall risk assessment`;
+
+    // Call the onRepositorySelect with the analysis prompt
+    onRepositorySelect?.(analysisPrompt, selectedRepoForFiles);
+    setShowFileSelector(false);
+    setSelectedRepoForFiles(null);
   };
 
   const getLanguageColor = (language: string | null) => {
@@ -282,6 +318,21 @@ export default function GithubIntegration({
                         Private
                       </span>
                     )}
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() => handleRepositorySelect(repo)}
+                        className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                      >
+                        Create Project & Scan
+                      </button>
+                      <button
+                        onClick={() => handleSelectFiles(repo)}
+                        className="px-3 py-1.5 text-sm bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors flex items-center gap-1"
+                      >
+                        <FileText className="w-4 h-4" />
+                        Select Files
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -316,6 +367,19 @@ export default function GithubIntegration({
             )}
           </div>
         </div>
+      )}
+
+      {showFileSelector && selectedRepoForFiles && pat && (
+        <RepoFileSelector
+          isOpen={showFileSelector}
+          onClose={() => {
+            setShowFileSelector(false);
+            setSelectedRepoForFiles(null);
+          }}
+          repoDetails={selectedRepoForFiles}
+          onFilesSelect={handleFilesSelected}
+          githubPat={pat}
+        />
       )}
     </div>
   );
