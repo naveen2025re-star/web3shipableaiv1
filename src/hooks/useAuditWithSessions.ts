@@ -330,6 +330,11 @@ export function useAuditWithSessions() {
       
       console.log('Making audit request to edge function...');
       
+      // Validate input before making request
+      if (!code?.trim() && !repoDetails) {
+        throw new Error('Please provide code to audit or select a GitHub repository');
+      }
+
       const response = await fetch(`${supabaseUrl}/functions/v1/audit-contract`, {
         method: 'POST',
         headers: {

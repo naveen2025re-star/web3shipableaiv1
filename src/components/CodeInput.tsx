@@ -183,7 +183,7 @@ export default function CodeInput({ onSubmit, isLoading }: CodeInputProps) {
         <h2 className="text-2xl font-bold text-gray-900 mb-2">
           Upload Code or Scan Repository
         </h2>
-        <p className="text-gray-600">
+          placeholder="Paste your smart contract code here, describe what you want to audit, or use GitHub integration to select repository files..."
           Upload files, paste code, or scan GitHub repositories with our advanced AI auditor
         </p>
       </div>
