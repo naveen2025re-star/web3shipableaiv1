@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -18,7 +19,7 @@ export function useProjects() {
   const [loading, setLoading] = useState(true);
 
   // Load projects from database
-  useEffect(() => {
+  const loadProjects = useCallback(async () => {
     if (!user) {
       setProjects([]);
       setCurrentProject(null);
@@ -26,31 +27,32 @@ export function useProjects() {
       return;
     }
 
-    const fetchProjects = async () => {
-      try {
-        console.log('Fetching projects for user:', user.id);
-        const { data, error } = await supabase
-          .from('projects')
-          .select('*')
-          .order('created_at', { ascending: false });
+    try {
+      console.log('Fetching projects for user:', user.id);
+      const { data, error } = await supabase
+        .from('projects')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-        if (error) {
-          console.error('Error fetching projects:', error);
-          setProjects([]);
-        } else {
-          console.log('Fetched projects:', data?.length || 0);
-          setProjects(data || []);
-        }
-      } catch (error) {
+      if (error) {
         console.error('Error fetching projects:', error);
         setProjects([]);
-      } finally {
-        setLoading(false);
+      } else {
+        console.log('Fetched projects:', data?.length || 0);
+        setProjects(data || []);
       }
-    };
-
-    fetchProjects();
+    } catch (error) {
+      console.error('Error fetching projects:', error);
+      setProjects([]);
+    } finally {
+      setLoading(false);
+    }
   }, [user]);
+
+  // Load projects from database
+  useEffect(() => {
+    loadProjects();
+  }, [loadProjects]);
 
   // Load current project from localStorage on mount
   useEffect(() => {
