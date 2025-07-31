@@ -72,34 +72,6 @@ export default function ChatHistory({ messages, onStartNewAudit }: ChatHistoryPr
               </div>
             </div>
 
-            {/* Enhanced Feature Highlights */}
-            <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-2xl p-6 mb-8 border border-blue-100">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 text-center">🚀 Enhanced AI Capabilities</h3>
-              <div className="grid md:grid-cols-3 gap-4 text-sm">
-                <div className="text-center">
-                  <div className="bg-blue-100 rounded-full p-2 w-8 h-8 mx-auto mb-2">
-                    <Sparkles className="h-4 w-4 text-blue-600" />
-                  </div>
-                  <div className="font-medium text-blue-900">Smart Code Analysis</div>
-                  <div className="text-blue-700">Real-time complexity assessment</div>
-                </div>
-                <div className="text-center">
-                  <div className="bg-purple-100 rounded-full p-2 w-8 h-8 mx-auto mb-2">
-                    <TrendingUp className="h-4 w-4 text-purple-600" />
-                  </div>
-                  <div className="font-medium text-purple-900">Confidence Scoring</div>
-                  <div className="text-purple-700">AI confidence ratings for findings</div>
-                </div>
-                <div className="text-center">
-                  <div className="bg-green-100 rounded-full p-2 w-8 h-8 mx-auto mb-2">
-                    <Zap className="h-4 w-4 text-green-600" />
-                  </div>
-                  <div className="font-medium text-green-900">Gas Optimization</div>
-                  <div className="text-green-700">Automated gas usage analysis</div>
-                </div>
-              </div>
-            </div>
-
             {/* CTA Button */}
             <button
               onClick={onStartNewAudit}

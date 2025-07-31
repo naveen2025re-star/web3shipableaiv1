@@ -11,57 +11,8 @@ interface AuditRequest {
     contractLanguage: string;
     targetBlockchain: string;
     projectName: string;
-    codeMetadata?: {
-      originalLength: number;
-      cleanedLength: number;
-      linesOfCode: number;
-      complexity: 'Low' | 'Medium' | 'High';
-      processingTime: number;
-    };
   };
 }
-
-// Enhanced prompt engineering for better AI responses
-const buildAuditPrompt = (code: string, description: string, projectContext: any): string => {
-  const complexity = projectContext?.codeMetadata?.complexity || 'Medium';
-  const linesOfCode = projectContext?.codeMetadata?.linesOfCode || 'unknown';
-  
-  return `You are an expert smart contract security auditor. Please perform a comprehensive security audit of this ${projectContext?.contractLanguage || 'Solidity'} smart contract for ${projectContext?.targetBlockchain || 'Ethereum'}.
-
-**Contract Analysis Context:**
-- Project: ${projectContext?.projectName || 'Smart Contract'}
-- Language: ${projectContext?.contractLanguage || 'Solidity'}
-- Target Blockchain: ${projectContext?.targetBlockchain || 'Ethereum'}
-- Code Complexity: ${complexity}
-- Lines of Code: ${linesOfCode}
-${description ? `- Description: ${description}` : ''}
-
-**Audit Requirements:**
-1. Identify ALL security vulnerabilities with precise severity ratings
-2. Provide detailed technical explanations for each finding
-3. Include proof-of-concept exploits where applicable
-4. Suggest specific remediation steps with code examples
-5. Assess gas optimization opportunities
-6. Rate your confidence level for each finding (0-100%)
-
-**Response Format:**
-Please structure your response with clear sections using markdown headers (###) for each vulnerability found. For each vulnerability, include:
-- **Severity**: Critical/High/Medium/Low/Informational
-- **Detailed Explanation**: Technical analysis of the vulnerability
-- **Impact**: Potential consequences and risk assessment
-- **Proof of Concept**: Attack scenario or exploit demonstration
-- **Recommended Remediation**: Specific fixes with code examples
-- **Confidence**: Your confidence level (0-100%)
-- **Gas Impact**: High/Medium/Low/Minimal (if applicable)
-- **References**: Relevant security resources or standards
-
-**Smart Contract Code:**
-\`\`\`${projectContext?.contractLanguage?.toLowerCase() || 'solidity'}
-${code}
-\`\`\`
-
-Please provide a thorough, professional audit report with actionable insights.`;
-};
 
 Deno.serve(async (req: Request) => {
   // Handle CORS preflight requests
@@ -156,7 +107,19 @@ Deno.serve(async (req: Request) => {
     }
 
     // Build structured messages for better AI understanding
-    const userMessage = buildAuditPrompt(sanitizedCode, description || '', projectContext);
+    const userMessage = `Please audit this smart contract (${sanitizedCode.length} characters):
+
+${projectContext ? `**Project Context:**
+- Language: ${escapeMarkdown(projectContext.contractLanguage)}
+- Blockchain: ${escapeMarkdown(projectContext.targetBlockchain)}
+- Project: ${escapeMarkdown(projectContext.projectName)}
+
+` : ''}${description ? `**Description:**
+${escapeMarkdown(description)}
+
+` : ''}**Smart Contract Code:**
+
+${sanitizedCode}`;
 
     // Calculate approximate token count (rough estimate: 1 token ≈ 4 characters)
     const estimatedTokens = Math.ceil(
@@ -177,9 +140,7 @@ Deno.serve(async (req: Request) => {
           model: "claude-3-7-sonnet-latest",
           messages: [
             { "role": "user", "content": userMessage }
-          ],
-          temperature: 0.1, // Lower temperature for more consistent, focused analysis
-          max_tokens: 4000 // Ensure comprehensive responses
+          ]
         })
       });
 
@@ -265,9 +226,7 @@ Deno.serve(async (req: Request) => {
           metadata: {
             codeLength: sanitizedCode.length,
             estimatedTokens,
-            usage: completion.usage,
-            model: "claude-3-7-sonnet-latest",
-            projectContext: projectContext?.projectName || 'Unknown'
+            usage: completion.usage
           }
         }),
         {
