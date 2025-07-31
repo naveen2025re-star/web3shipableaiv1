@@ -1,5 +1,4 @@
 import React, { useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import ProjectSelector from '../components/ProjectSelector';
 import ProjectModal from '../components/ProjectModal';
@@ -9,7 +8,7 @@ import { useProjects, Project } from '../hooks/useProjects';
 import { useChatSessions } from '../hooks/useChatSessions';
 import { useAuditWithSessions } from '../hooks/useAuditWithSessions';
 import { useState } from 'react';
-import { MessageSquare, Plus, Settings, LogOut, User, Trash2, Edit3, Code } from 'lucide-react';
+import { MessageSquare, Plus, Settings, LogOut, User, Trash2, Edit3 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { ChatSession } from '../hooks/useChatSessions';
 
@@ -216,15 +215,6 @@ export default function ChatApp() {
           onDeleteProject={handleDeleteProject}
         />
       </div>
-
-      {/* Developer Mode Button */}
-      <Link
-        to="/dev"
-        className="fixed bottom-6 right-6 z-40 bg-gradient-to-r from-purple-600 to-blue-600 text-white p-4 rounded-full shadow-2xl hover:shadow-3xl transition-all duration-300 transform hover:scale-110 group"
-        title="Switch to Developer Mode"
-      >
-        <Code className="h-6 w-6 group-hover:rotate-12 transition-transform" />
-      </Link>
 
       {/* Project Modal */}
       <ProjectModal

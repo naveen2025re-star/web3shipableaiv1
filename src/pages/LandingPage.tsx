@@ -161,13 +161,10 @@ export default function LandingPage() {
               Start Free Audit
               <ArrowRight className="ml-3 h-6 w-6 group-hover:translate-x-1 transition-transform" />
             </Link>
-            <Link
-              to="/dev"
-              className="group flex items-center text-gray-700 hover:text-gray-900 px-10 py-5 rounded-2xl border-2 border-gray-300 hover:border-gray-400 transition-all duration-300 font-bold text-lg bg-white/50 backdrop-blur-sm"
-            >
-              <Code className="mr-3 h-6 w-6 group-hover:scale-110 transition-transform" />
-              Try Developer Mode
-            </Link>
+            <button className="group flex items-center text-gray-700 hover:text-gray-900 px-10 py-5 rounded-2xl border-2 border-gray-300 hover:border-gray-400 transition-all duration-300 font-bold text-lg bg-white/50 backdrop-blur-sm">
+              <Play className="mr-3 h-6 w-6 group-hover:scale-110 transition-transform" />
+              Watch Demo
+            </button>
           </div>
 
           {/* Stats */}
