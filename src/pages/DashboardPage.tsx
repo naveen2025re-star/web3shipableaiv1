@@ -87,8 +87,12 @@ export default function DashboardPage() {
   };
 
   const handleProjectSelect = (project: Project) => {
+    console.log('Selecting project:', project.name);
     setCurrentProject(project);
-    navigate('/app');
+    // Use setTimeout to ensure state is set before navigation
+    setTimeout(() => {
+      navigate('/app');
+    }, 0);
   };
 
   const getLanguageColor = (language: string) => {

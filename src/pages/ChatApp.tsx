@@ -34,19 +34,19 @@ export default function ChatApp() {
 
   const { performAudit } = useAuditWithSessions();
 
-  // Redirect to dashboard if no project is selected
+  // Handle project selection logic
   useEffect(() => {
-    if (!currentProject && projects.length === 0) {
+    if (projects.length === 0) {
+      // No projects exist, redirect to dashboard to create one
       navigate('/dashboard');
+      return;
     }
-  }, [currentProject, projects.length, navigate]);
-
-  // Auto-select first project if none selected but projects exist
-  useEffect(() => {
-    if (projects.length > 0 && !currentProject) {
+    
+    if (!currentProject) {
+      // Projects exist but none selected, auto-select first one
       setCurrentProject(projects[0]);
     }
-  }, [projects, currentProject, setCurrentProject]);
+  }, [projects, currentProject, setCurrentProject, navigate]);
 
   const handleNewChat = () => {
     createNewSession();

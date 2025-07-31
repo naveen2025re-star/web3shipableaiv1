@@ -85,7 +85,7 @@ function App() {
               </AuthenticatedRoute>
             } 
           />
-          <Route path="*" element={<Navigate to="/dashboard" />} />
+          <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </Router>
     </AuthProvider>
