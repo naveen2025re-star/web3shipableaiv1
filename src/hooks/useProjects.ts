@@ -14,43 +14,67 @@ export interface Project {
 export function useProjects() {
   const { user } = useAuth();
   const [projects, setProjects] = useState<Project[]>([]);
-  const [currentProject, setCurrentProject] = useState<Project | null>(() => {
-    // Try to restore from localStorage
-    const saved = localStorage.getItem('currentProject');
-    return saved ? JSON.parse(saved) : null;
-  });
-  const [loading, setLoading] = useState(false);
+  const [currentProject, setCurrentProject] = useState<Project | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  // Save current project to localStorage whenever it changes
+  // Load projects from database
   useEffect(() => {
-    if (currentProject) {
-      localStorage.setItem('currentProject', JSON.stringify(currentProject));
-      console.log('Saved current project to localStorage:', currentProject.name);
-    } else {
-      localStorage.removeItem('currentProject');
-      console.log('Removed current project from localStorage');
-    }
-  }, [currentProject]);
-
-  // Load all projects for the current user
-  const loadProjects = async () => {
-    if (!user) return;
-
-    try {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('projects')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('updated_at', { ascending: false });
-
-      if (error) throw error;
-      setProjects(data || []);
-    } catch (error) {
-      console.error('Error loading projects:', error);
-    } finally {
+    if (!user) {
+      setProjects([]);
+      setCurrentProject(null);
       setLoading(false);
+      return;
     }
+
+    const fetchProjects = async () => {
+      try {
+        console.log('Fetching projects for user:', user.id);
+        const { data, error } = await supabase
+          .from('projects')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          console.error('Error fetching projects:', error);
+          setProjects([]);
+        } else {
+          console.log('Fetched projects:', data?.length || 0);
+          setProjects(data || []);
+        }
+      } catch (error) {
+        console.error('Error fetching projects:', error);
+        setProjects([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProjects();
+  }, [user]);
+
+  // Load current project from localStorage on mount
+  useEffect(() => {
+    if (!user || projects.length === 0) return;
+
+    const savedProjectId = localStorage.getItem('currentProjectId');
+    if (savedProjectId) {
+      const savedProject = projects.find(p => p.id === savedProjectId);
+      if (savedProject) {
+        setCurrentProject(savedProject);
+      } else {
+        localStorage.removeItem('currentProjectId');
+      }
+    }
+  }, [user, projects]);
+
+  const selectProject = (project: Project) => {
+    setCurrentProject(project);
+    localStorage.setItem('currentProjectId', project.id);
+  };
+
+  const clearCurrentProject = () => {
+    setCurrentProject(null);
+    localStorage.removeItem('currentProjectId');
   };
 
   // Create a new project
@@ -133,16 +157,6 @@ export function useProjects() {
       return false;
     }
   };
-
-  // Load projects when user changes
-  useEffect(() => {
-    if (user) {
-      loadProjects();
-    } else {
-      setProjects([]);
-      setCurrentProject(null);
-    }
-  }, [user]);
 
   return {
     projects,

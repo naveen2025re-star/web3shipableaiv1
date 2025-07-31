@@ -35,10 +35,15 @@ export default function ChatApp() {
     updateChatSessionTitle,
   } = useChatSessions(currentProject);
 
-  const { performAudit } = useAuditWithSessions();
-
-  // Handle project availability
   useEffect(() => {
+    // Wait for projects to load
+    if (projectsLoading) return;
+    
+    // If no user, redirect will be handled by route protection
+    if (!user) return;
+
+    console.log('ChatApp useEffect - projects:', projects.length, 'currentProject:', currentProject?.name || null);
+    
     console.log('ChatApp useEffect - projects:', projects.length, 'currentProject:', currentProject?.name || 'null');
     
     if (projects.length === 0) {
@@ -52,7 +57,7 @@ export default function ChatApp() {
       const saved = localStorage.getItem('currentProject');
       if (saved) {
         try {
-          const savedProject = JSON.parse(saved);
+  }, [projects, currentProject, navigate, selectProject, projectsLoading, user]);
           console.log('Found saved project:', savedProject.name);
           // Verify the saved project still exists
           const existingProject = projects.find(p => p.id === savedProject.id);
@@ -122,13 +127,12 @@ export default function ChatApp() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading project...</p>
+          <p className="text-gray-600">Loading your projects...</p>
         </div>
       </div>
     );
   }
 
-  console.log('Rendering ChatApp with project:', currentProject?.name || 'null');
 
   return (
     <div className="h-screen flex bg-gray-50">

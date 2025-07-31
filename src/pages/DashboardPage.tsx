@@ -90,11 +90,7 @@ export default function DashboardPage() {
     console.log('Selecting project:', project.name);
     console.log('Setting current project...');
     setCurrentProject(project);
-    
-    // Force immediate localStorage update
     localStorage.setItem('currentProject', JSON.stringify(project));
-    
-    console.log('Navigating to /app...');
     navigate('/app');
   };
 

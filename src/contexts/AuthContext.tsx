@@ -25,10 +25,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) {
-          console.warn('Session retrieval error:', error.message);
+          console.log('Session retrieval error (this is normal on first visit):', error.message);
           // Clear any invalid tokens and localStorage
           await supabase.auth.signOut();
-          localStorage.clear();
+          // Only clear auth-related items, not all localStorage
+          localStorage.removeItem('sb-nwalllwwcywinbszzlbm-auth-token');
           setSession(null);
           setUser(null);
         } else {
@@ -36,10 +37,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUser(session?.user ?? null);
         }
       } catch (err) {
-        console.error('Auth initialization error:', err);
+        console.log('Auth initialization error (this is normal on first visit):', err);
         // Clear everything on initialization error
         await supabase.auth.signOut();
-        localStorage.clear();
+        localStorage.removeItem('sb-nwalllwwcywinbszzlbm-auth-token');
         setSession(null);
         setUser(null);
       } finally {
@@ -53,16 +54,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth state change:', event, session?.user?.id);
+      // Only log important auth events
+      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
+        console.log('Auth state change:', event, session?.user?.id);
+      }
       
       if (event === 'TOKEN_REFRESHED' && !session) {
-        console.warn('Token refresh failed, clearing session');
+        console.log('Token refresh failed, clearing session');
         await supabase.auth.signOut();
-        localStorage.clear();
+        localStorage.removeItem('sb-nwalllwwcywinbszzlbm-auth-token');
       }
       
       if (event === 'SIGNED_OUT') {
-        localStorage.clear();
+        localStorage.removeItem('sb-nwalllwwcywinbszzlbm-auth-token');
       }
       
       setSession(session);
@@ -100,11 +104,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = async () => {
     try {
       await supabase.auth.signOut();
-      localStorage.clear();
+      localStorage.removeItem('sb-nwalllwwcywinbszzlbm-auth-token');
     } catch (error) {
       console.error('Sign out error:', error);
       // Force clear even if signOut fails
-      localStorage.clear();
+      localStorage.removeItem('sb-nwalllwwcywinbszzlbm-auth-token');
       setSession(null);
       setUser(null);
     }
