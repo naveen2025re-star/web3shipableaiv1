@@ -14,8 +14,23 @@ export interface Project {
 export function useProjects() {
   const { user } = useAuth();
   const [projects, setProjects] = useState<Project[]>([]);
-  const [currentProject, setCurrentProject] = useState<Project | null>(null);
+  const [currentProject, setCurrentProject] = useState<Project | null>(() => {
+    // Try to restore from localStorage
+    const saved = localStorage.getItem('currentProject');
+    return saved ? JSON.parse(saved) : null;
+  });
   const [loading, setLoading] = useState(false);
+
+  // Save current project to localStorage whenever it changes
+  useEffect(() => {
+    if (currentProject) {
+      localStorage.setItem('currentProject', JSON.stringify(currentProject));
+      console.log('Saved current project to localStorage:', currentProject.name);
+    } else {
+      localStorage.removeItem('currentProject');
+      console.log('Removed current project from localStorage');
+    }
+  }, [currentProject]);
 
   // Load all projects for the current user
   const loadProjects = async () => {

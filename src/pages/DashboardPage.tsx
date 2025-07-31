@@ -88,11 +88,14 @@ export default function DashboardPage() {
 
   const handleProjectSelect = (project: Project) => {
     console.log('Selecting project:', project.name);
+    console.log('Setting current project...');
     setCurrentProject(project);
-    // Use setTimeout to ensure state is set before navigation
-    setTimeout(() => {
-      navigate('/app');
-    }, 0);
+    
+    // Force immediate localStorage update
+    localStorage.setItem('currentProject', JSON.stringify(project));
+    
+    console.log('Navigating to /app...');
+    navigate('/app');
   };
 
   const getLanguageColor = (language: string) => {

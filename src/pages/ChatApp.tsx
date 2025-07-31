@@ -17,6 +17,9 @@ export default function ChatApp() {
     setCurrentProject,
   } = useProjects();
 
+  console.log('ChatApp rendered with currentProject:', currentProject?.name || 'null');
+  console.log('Projects available:', projects.length);
+
   const {
     currentSessionId,
     messages,
@@ -34,17 +37,40 @@ export default function ChatApp() {
 
   const { performAudit } = useAuditWithSessions();
 
-  // Handle project selection logic
+  // Handle project availability
   useEffect(() => {
+    console.log('ChatApp useEffect - projects:', projects.length, 'currentProject:', currentProject?.name || 'null');
+    
     if (projects.length === 0) {
-      // No projects exist, redirect to dashboard to create one
+      console.log('No projects exist, redirecting to dashboard');
       navigate('/dashboard');
       return;
     }
     
     if (!currentProject) {
-      // Projects exist but none selected, auto-select first one
-      setCurrentProject(projects[0]);
+      console.log('No current project, checking localStorage...');
+      const saved = localStorage.getItem('currentProject');
+      if (saved) {
+        try {
+          const savedProject = JSON.parse(saved);
+          console.log('Found saved project:', savedProject.name);
+          // Verify the saved project still exists
+          const existingProject = projects.find(p => p.id === savedProject.id);
+          if (existingProject) {
+            console.log('Restoring saved project');
+            setCurrentProject(existingProject);
+          } else {
+            console.log('Saved project no longer exists, selecting first available');
+            setCurrentProject(projects[0]);
+          }
+        } catch (error) {
+          console.error('Error parsing saved project:', error);
+          setCurrentProject(projects[0]);
+        }
+      } else {
+        console.log('No saved project, selecting first available');
+        setCurrentProject(projects[0]);
+      }
     }
   }, [projects, currentProject, setCurrentProject, navigate]);
 
@@ -64,6 +90,7 @@ export default function ChatApp() {
 
   const handleAudit = async (code: string, description: string) => {
     if (!currentProject) {
+      console.error('No current project available for audit');
       alert('Please select a project first');
       return;
     }
@@ -88,14 +115,20 @@ export default function ChatApp() {
     );
   };
 
-  // Show loading state while determining project state
-  if (!currentProject && projects.length > 0) {
+  // Show loading state while projects are being loaded or project is being determined
+  if (projects.length > 0 && !currentProject) {
+    console.log('Showing loading state - waiting for project selection');
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading project...</p>
+        </div>
       </div>
     );
   }
+
+  console.log('Rendering ChatApp with project:', currentProject?.name || 'null');
 
   return (
     <div className="h-screen flex bg-gray-50">
