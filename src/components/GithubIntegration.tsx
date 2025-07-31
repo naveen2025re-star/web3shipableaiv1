@@ -250,7 +250,6 @@ export default function GithubIntegration({
             Select Repository ({repositories.length} found)
           </h4>
           <div className="max-h-80 overflow-y-auto space-y-2 border border-gray-200 rounded-lg p-2">
-          <div className="max-h-80 overflow-y-auto space-y-2 border border-gray-200 rounded-lg p-2">
             {repositories.map((repo) => (
               <div
                 key={repo.id}
