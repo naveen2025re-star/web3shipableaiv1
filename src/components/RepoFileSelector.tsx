@@ -257,3 +257,5 @@ export const RepoFileSelector: React.FC<RepoFileSelectorProps> = ({
     </div>
   );
 };
+
+export default RepoFileSelector
