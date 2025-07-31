@@ -7,6 +7,10 @@ const corsHeaders = {
 interface AuditRequest {
   code: string;
   description?: string;
+  githubRepo?: {
+    owner: string;
+    repo: string;
+  };
   projectContext?: {
     contractLanguage: string;
     targetBlockchain: string;
@@ -35,10 +39,11 @@ Deno.serve(async (req: Request) => {
     }
 
     const { code, description, projectContext }: AuditRequest = await req.json();
+    const { code, description, githubRepo, projectContext }: AuditRequest = await req.json();
 
-    if (!code) {
+    if (!code && !githubRepo) {
       return new Response(
-        JSON.stringify({ error: "Code is required" }),
+        JSON.stringify({ error: "Code or GitHub repository is required" }),
         {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -46,13 +51,203 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Validate and sanitize input
-    // Clean and sanitize the code
-    const sanitizedCode = code
+    let finalCode = '';
+    let codeSource = '';
+
+    if (githubRepo) {
+      // Fetch code from GitHub repository
+      console.log(`Fetching code from GitHub repo: ${githubRepo.owner}/${githubRepo.repo}`);
+      
+      // Get the authorization header to identify the user
+      const authHeader = req.headers.get('Authorization');
+      if (!authHeader) {
+        return new Response(
+          JSON.stringify({ error: "Missing authorization header" }),
+          {
+            status: 401,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+
+      const token = authHeader.replace('Bearer ', '');
+      
+      // Get Supabase environment variables
+      const supabaseUrl = Deno.env.get("SUPABASE_URL");
+      const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+      
+      if (!supabaseUrl || !supabaseServiceKey) {
+        return new Response(
+          JSON.stringify({ error: "Supabase configuration missing" }),
+          {
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+
+      // Verify JWT and get user
+      const jwtResponse = await fetch(`${supabaseUrl}/auth/v1/user`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'apikey': supabaseServiceKey,
+        },
+      });
+
+      if (!jwtResponse.ok) {
+        return new Response(
+          JSON.stringify({ error: "Invalid or expired token" }),
+          {
+            status: 401,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+
+      const userData = await jwtResponse.json();
+      const userId = userData.id;
+
+      // Fetch user's GitHub PAT
+      const profileResponse = await fetch(`${supabaseUrl}/rest/v1/user_profiles?id=eq.${userId}&select=github_pat`, {
+        headers: {
+          'Authorization': `Bearer ${supabaseServiceKey}`,
+          'apikey': supabaseServiceKey,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!profileResponse.ok) {
+        return new Response(
+          JSON.stringify({ error: "Failed to fetch user profile" }),
+          {
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+
+      const profileData = await profileResponse.json();
+      
+      if (!profileData || profileData.length === 0 || !profileData[0].github_pat) {
+        return new Response(
+          JSON.stringify({ error: "GitHub PAT not found. Please add your GitHub Personal Access Token." }),
+          {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+
+      const githubPat = profileData[0].github_pat;
+
+      // Fetch repository contents recursively
+      const fetchRepoContents = async (path = ''): Promise<string> => {
+        const url = `https://api.github.com/repos/${githubRepo.owner}/${githubRepo.repo}/contents/${path}`;
+        
+        const response = await fetch(url, {
+          headers: {
+            'Authorization': `Bearer ${githubPat}`,
+            'Accept': 'application/vnd.github.v3+json',
+            'User-Agent': 'SmartAudit-AI',
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch ${path}: ${response.status} ${response.statusText}`);
+        }
+
+        const contents = await response.json();
+        let combinedContent = '';
+
+        if (Array.isArray(contents)) {
+          // Directory
+          for (const item of contents) {
+            if (item.type === 'file' && isCodeFile(item.name)) {
+              // Fetch file content
+              const fileResponse = await fetch(item.download_url, {
+                headers: {
+                  'Authorization': `Bearer ${githubPat}`,
+                  'User-Agent': 'SmartAudit-AI',
+                },
+              });
+              
+              if (fileResponse.ok) {
+                const fileContent = await fileResponse.text();
+                combinedContent += `\n\n// File: ${githubRepo.owner}/${githubRepo.repo}/${item.path}\n${fileContent}`;
+              }
+            } else if (item.type === 'dir' && !item.name.startsWith('.') && item.name !== 'node_modules') {
+              // Recursively fetch directory contents
+              const dirContent = await fetchRepoContents(item.path);
+              combinedContent += dirContent;
+            }
+          }
+        } else if (contents.type === 'file' && isCodeFile(contents.name)) {
+          // Single file
+          const fileResponse = await fetch(contents.download_url, {
+            headers: {
+              'Authorization': `Bearer ${githubPat}`,
+              'User-Agent': 'SmartAudit-AI',
+            },
+          });
+          
+          if (fileResponse.ok) {
+            const fileContent = await fileResponse.text();
+            combinedContent = `// File: ${githubRepo.owner}/${githubRepo.repo}/${contents.path}\n${fileContent}`;
+          }
+        }
+
+        return combinedContent;
+      };
+
+      // Helper function to check if file is a code file
+      const isCodeFile = (filename: string): boolean => {
+        const codeExtensions = ['.sol', '.vy', '.rs', '.js', '.ts', '.jsx', '.tsx', '.py', '.cairo', '.move', '.go', '.java', '.cpp', '.c', '.h'];
+        return codeExtensions.some(ext => filename.toLowerCase().endsWith(ext));
+      };
+
+      try {
+        finalCode = await fetchRepoContents();
+        codeSource = `GitHub Repository: ${githubRepo.owner}/${githubRepo.repo}`;
+        
+        if (!finalCode.trim()) {
+          return new Response(
+            JSON.stringify({ error: "No code files found in the repository" }),
+            {
+              status: 400,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            }
+          );
+        }
+        
+        // Add any additional code provided
+        if (code && code.trim()) {
+          finalCode += `\n\n// Additional Code Provided:\n${code}`;
+        }
+        
+      } catch (error) {
+        console.error("Error fetching repository contents:", error);
+        return new Response(
+          JSON.stringify({ 
+            error: "Failed to fetch repository contents",
+            details: error instanceof Error ? error.message : "Unknown error"
+          }),
+          {
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+    } else {
+      // Use provided code
+      finalCode = code;
+      codeSource = "Direct code input";
+    }
+
+    // Validate and sanitize the final code
+    const sanitizedCode = finalCode
       .replace(/\r\n/g, '\n')  // Normalize line endings
       .replace(/\t/g, '    ')   // Convert tabs to spaces
       .trim();
-
     if (!sanitizedCode) {
       return new Response(
         JSON.stringify({ error: "No valid code content found" }),
@@ -107,12 +302,16 @@ Deno.serve(async (req: Request) => {
     }
 
     // Build structured messages for better AI understanding
-    const userMessage = `Please audit this smart contract (${sanitizedCode.length} characters):
+    const userMessage = `Please audit this smart contract (${sanitizedCode.length} characters from ${codeSource}):
 
 ${projectContext ? `**Project Context:**
 - Language: ${escapeMarkdown(projectContext.contractLanguage)}
 - Blockchain: ${escapeMarkdown(projectContext.targetBlockchain)}
 - Project: ${escapeMarkdown(projectContext.projectName)}
+
+` : ''}${githubRepo ? `**GitHub Repository:**
+- Repository: ${escapeMarkdown(githubRepo.owner)}/${escapeMarkdown(githubRepo.repo)}
+- Source: GitHub API fetch
 
 ` : ''}${description ? `**Description:**
 ${escapeMarkdown(description)}

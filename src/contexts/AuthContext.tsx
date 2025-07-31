@@ -2,6 +2,16 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 
+interface UserProfile {
+  id: string;
+  email: string;
+  full_name: string | null;
+  avatar_url: string | null;
+  github_pat: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
@@ -9,6 +19,8 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signUp: (email: string, password: string, fullName?: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
+  updateUserProfile: (updates: Partial<UserProfile>) => Promise<{ error: any }>;
+  getUserProfile: () => Promise<{ data: UserProfile | null; error: any }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -114,6 +126,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const updateUserProfile = async (updates: Partial<UserProfile>) => {
+    if (!user) {
+      return { error: { message: 'No authenticated user' } };
+    }
+
+    try {
+      const { error } = await supabase
+        .from('user_profiles')
+        .update(updates)
+        .eq('id', user.id);
+
+      return { error };
+    } catch (error) {
+      console.error('Error updating user profile:', error);
+      return { error };
+    }
+  };
+
+  const getUserProfile = async () => {
+    if (!user) {
+      return { data: null, error: { message: 'No authenticated user' } };
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+      return { data, error };
+    } catch (error) {
+      console.error('Error fetching user profile:', error);
+      return { data: null, error };
+    }
+  };
+
   const value = {
     user,
     session,
@@ -121,6 +170,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signIn,
     signUp,
     signOut,
+    updateUserProfile,
+    getUserProfile,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

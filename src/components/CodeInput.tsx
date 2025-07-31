@@ -1,8 +1,22 @@
 import React, { useState } from 'react';
-import { Shield, Plus, X, File, Send, XCircle, Upload, Sparkles, Zap } from 'lucide-react';
+import { Shield, Plus, X, File, Send, XCircle, Upload, Sparkles, Zap, Github } from 'lucide-react';
+import GithubIntegration from './GithubIntegration';
+
+interface Repository {
+  id: number;
+  name: string;
+  full_name: string;
+  owner: {
+    login: string;
+  };
+  description: string | null;
+  language: string | null;
+  private: boolean;
+  updated_at: string;
+}
 
 interface CodeInputProps {
-  onSubmit: (code: string, description: string) => void;
+  onSubmit: (code: string, description: string, repoDetails?: { owner: string; repo: string }) => void;
   isLoading: boolean;
 }
 
@@ -10,8 +24,10 @@ export default function CodeInput({ onSubmit, isLoading }: CodeInputProps) {
   const [input, setInput] = useState('');
   const [uploadedFiles, setUploadedFiles] = useState<Array<{name: string, content: string}>>([]);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [showGithubModal, setShowGithubModal] = useState(false);
+  const [selectedRepo, setSelectedRepo] = useState<Repository | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent, repoDetails?: { owner: string; repo: string }) => {
     e.preventDefault();
     
     // Combine uploaded files content with manual input
@@ -41,9 +57,10 @@ export default function CodeInput({ onSubmit, isLoading }: CodeInputProps) {
     
     // Only submit if we have code to analyze
     if (finalCode.trim()) {
-      onSubmit(finalCode, description);
+      onSubmit(finalCode, description, repoDetails);
       setInput('');
       setUploadedFiles([]);
+      setSelectedRepo(null);
       
       // Reset textarea height
       const textarea = document.querySelector('textarea');
@@ -51,6 +68,34 @@ export default function CodeInput({ onSubmit, isLoading }: CodeInputProps) {
         textarea.style.height = 'auto';
         textarea.style.height = '60px';
       }
+    } else if (repoDetails) {
+      // GitHub repo scan without additional code
+      onSubmit('', description, repoDetails);
+      setInput('');
+      setUploadedFiles([]);
+      setSelectedRepo(null);
+      
+      // Reset textarea height
+      const textarea = document.querySelector('textarea');
+      if (textarea) {
+        textarea.style.height = 'auto';
+        textarea.style.height = '60px';
+      }
+    }
+  };
+
+  const handleGithubRepoSelect = (repo: Repository) => {
+    setSelectedRepo(repo);
+    setShowGithubModal(false);
+  };
+
+  const handleGithubScan = () => {
+    if (selectedRepo) {
+      const repoDetails = {
+        owner: selectedRepo.owner.login,
+        repo: selectedRepo.name,
+      };
+      handleSubmit({ preventDefault: () => {} } as React.FormEvent, repoDetails);
     }
   };
 
@@ -122,12 +167,44 @@ export default function CodeInput({ onSubmit, isLoading }: CodeInputProps) {
           AI-Powered Security Analysis
         </div>
         <h2 className="text-2xl font-bold text-gray-900 mb-2">
-          Upload Your Smart Contract
+          Upload Code or Scan Repository
         </h2>
         <p className="text-gray-600">
-          Get comprehensive security analysis in seconds with our advanced AI auditor
+          Upload files, paste code, or scan GitHub repositories with our advanced AI auditor
         </p>
       </div>
+
+      {/* GitHub Repository Selection */}
+      {selectedRepo && (
+        <div className="mb-6 p-4 bg-gradient-to-r from-gray-50 to-blue-50/30 rounded-2xl border border-blue-200">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="bg-gray-900 p-2 rounded-lg">
+                <Github className="h-4 w-4 text-white" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-900">Selected Repository</p>
+                <p className="text-sm text-gray-600">{selectedRepo.full_name}</p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={handleGithubScan}
+                disabled={isLoading}
+                className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-colors font-medium text-sm"
+              >
+                Scan Repository
+              </button>
+              <button
+                onClick={() => setSelectedRepo(null)}
+                className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
+              >
+                <X className="h-4 w-4 text-gray-600" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit}>
         <div 
@@ -217,10 +294,20 @@ export default function CodeInput({ onSubmit, isLoading }: CodeInputProps) {
                 />
               </label>
 
+              {/* GitHub Button */}
+              <button
+                type="button"
+                onClick={() => setShowGithubModal(true)}
+                className="p-2.5 hover:bg-gray-50 rounded-xl transition-all duration-200 hover:scale-110 group"
+                title="Scan GitHub Repository"
+              >
+                <Github className="h-5 w-5 text-gray-600 group-hover:text-gray-900" />
+              </button>
+
               {/* Submit Button */}
               <button
                 type="submit"
-                disabled={(!input.trim() && uploadedFiles.length === 0) || isLoading}
+                disabled={(!input.trim() && uploadedFiles.length === 0 && !selectedRepo) || isLoading}
                 className="group p-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed text-white rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-110 disabled:transform-none"
               >
                 {isLoading ? (
@@ -256,12 +343,16 @@ export default function CodeInput({ onSubmit, isLoading }: CodeInputProps) {
               <Shield className="h-4 w-4 mr-1 text-green-500" />
               <span>Enterprise-grade security</span>
             </div>
-            {uploadedFiles.length === 0 && (
+            {uploadedFiles.length === 0 && !selectedRepo && (
               <div className="flex items-center">
                 <Upload className="h-4 w-4 mr-1 text-blue-500" />
                 <span>Drag & drop or click to upload</span>
               </div>
             )}
+            <div className="flex items-center">
+              <Github className="h-4 w-4 mr-1 text-gray-500" />
+              <span>GitHub integration</span>
+            </div>
             <div className="flex items-center">
               <Sparkles className="h-4 w-4 mr-1 text-purple-500" />
               <span>AI-powered analysis</span>
@@ -274,6 +365,29 @@ export default function CodeInput({ onSubmit, isLoading }: CodeInputProps) {
           </div>
         </div>
       </form>
+
+      {/* GitHub Integration Modal */}
+      {showGithubModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <h3 className="text-xl font-semibold text-gray-900">Select GitHub Repository</h3>
+              <button
+                onClick={() => setShowGithubModal(false)}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <X className="h-5 w-5 text-gray-500" />
+              </button>
+            </div>
+            <div className="p-6">
+              <GithubIntegration
+                onRepositorySelect={handleGithubRepoSelect}
+                showRepositoryList={true}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -17,11 +17,13 @@ import {
   Search,
   Filter,
   Grid,
-  List
+  List,
+  Github
 } from 'lucide-react';
 import { useProjects, Project } from '../hooks/useProjects';
 import { useAuth } from '../contexts/AuthContext';
 import ProjectModal from '../components/ProjectModal';
+import GithubIntegration from '../components/GithubIntegration';
 
 export default function DashboardPage() {
   const navigate = useNavigate();
@@ -42,6 +44,7 @@ export default function DashboardPage() {
   const [filterLanguage, setFilterLanguage] = useState('');
   const [filterBlockchain, setFilterBlockchain] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [showGithubIntegration, setShowGithubIntegration] = useState(false);
 
   const handleCreateProject = () => {
     setProjectModalMode('create');
@@ -320,8 +323,23 @@ export default function DashboardPage() {
                 <Plus className="h-5 w-5 mr-2" />
                 New Project
               </button>
+              
+              <button
+                onClick={() => setShowGithubIntegration(!showGithubIntegration)}
+                className="inline-flex items-center px-6 py-3 bg-gray-900 text-white rounded-xl hover:bg-gray-800 transition-all duration-200 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+              >
+                <Github className="h-5 w-5 mr-2" />
+                GitHub
+              </button>
             </div>
           </div>
+
+          {/* GitHub Integration Section */}
+          {showGithubIntegration && (
+            <div className="mb-8">
+              <GithubIntegration showRepositoryList={false} />
+            </div>
+          )}
 
           {/* Projects Grid/List */}
           {filteredProjects.length === 0 ? (
