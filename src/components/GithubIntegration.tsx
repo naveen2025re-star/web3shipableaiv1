@@ -36,13 +36,11 @@ export default function GithubIntegration({
   const [selectedRepo, setSelectedRepo] = useState<Repository | null>(null);
   const [loading, setLoading] = useState(false);
   const [showFileSelector, setShowFileSelector] = useState(false);
-  const [selectedRepo, setSelectedRepo] = useState<{ owner: string; repo: string } | null>(null);
   const [fetchingRepos, setFetchingRepos] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [hasSavedPat, setHasSavedPat] = useState(false);
   const [showCreateProject, setShowCreateProject] = useState(false);
-  const [showFileSelector, setShowFileSelector] = useState(false);
   const [selectedRepoForFiles, setSelectedRepoForFiles] = useState<{ owner: string; repo: string } | null>(null);
 
   // Load existing PAT on component mount
