@@ -421,7 +421,11 @@ export default function DashboardPage() {
 
                     {/* Open Project Button */}
                     <button
-                      onClick={() => handleProjectSelect(project)}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleProjectSelect(project);
+                      }}
                       className={`w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-200 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center justify-center ${
                         viewMode === 'list' ? 'px-6 py-2 ml-4' : 'px-4 py-3 mt-4'
                       }`}
