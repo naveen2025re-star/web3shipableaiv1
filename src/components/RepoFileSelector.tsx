@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronRight, ChevronDown, File, Folder, Code, FileText, ArrowLeft } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 
 interface FileItem {
   name: string;
@@ -23,6 +24,7 @@ const RepoFileSelector: React.FC<RepoFileSelectorProps> = ({
   onFilesSelected,
   onCancel
 }) => {
+  const { session } = useAuth();
   const [files, setFiles] = useState<FileItem[]>([]);
   const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
   const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set());
@@ -51,7 +53,7 @@ const RepoFileSelector: React.FC<RepoFileSelectorProps> = ({
         `${supabaseUrl}/functions/v1/list-github-repos?action=list-files&owner=${owner}&repo=${repo}&path=${encodeURIComponent(path)}`,
         {
           headers: {
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            'Authorization': `Bearer ${session?.access_token}`,
             'Content-Type': 'application/json',
           },
         }
@@ -84,7 +86,7 @@ const RepoFileSelector: React.FC<RepoFileSelectorProps> = ({
       `${supabaseUrl}/functions/v1/list-github-repos?action=get-file-content&owner=${owner}&repo=${repo}&path=${encodeURIComponent(filePath)}`,
       {
         headers: {
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Authorization': `Bearer ${session?.access_token}`,
           'Content-Type': 'application/json',
         },
       }
