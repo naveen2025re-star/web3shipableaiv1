@@ -15,7 +15,7 @@ export default function ChatApp() {
     projects,
     currentProject,
     setCurrentProject,
-    projectsLoading,
+    projectsLoading: loading,
     user,
     selectProject
   } = useProjects();
