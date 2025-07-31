@@ -56,18 +56,29 @@ export function useProjects() {
 
   // Load current project from localStorage on mount
   useEffect(() => {
-    if (!user || projects.length === 0) return;
+    if (!user || projects.length === 0 || currentProject) return;
 
     const savedProjectId = localStorage.getItem('currentProjectId');
     if (savedProjectId) {
       const savedProject = projects.find(p => p.id === savedProjectId);
       if (savedProject) {
+        console.log('useProjects: Restoring saved project from localStorage:', savedProject.name);
         setCurrentProject(savedProject);
       } else {
+        console.log('useProjects: Saved project not found, clearing localStorage');
         localStorage.removeItem('currentProjectId');
+        // Auto-select first project if available
+        if (projects.length > 0) {
+          console.log('useProjects: Auto-selecting first project:', projects[0].name);
+          selectProject(projects[0]);
+        }
       }
+    } else if (projects.length > 0) {
+      // No saved project, select first available
+      console.log('useProjects: No saved project, selecting first available:', projects[0].name);
+      selectProject(projects[0]);
     }
-  }, [user, projects]);
+  }, [user, projects, currentProject]);
 
   const selectProject = (project: Project) => {
     setCurrentProject(project);

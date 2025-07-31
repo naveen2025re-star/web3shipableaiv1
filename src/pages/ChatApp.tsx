@@ -77,12 +77,16 @@ export default function ChatApp() {
         } catch (error) {
           console.error('Error parsing saved project:', error);
           localStorage.removeItem('currentProjectId');
-          setCurrentProject(projects[0]);
+          if (projects.length > 0) {
+            setCurrentProject(projects[0]);
+          }
           return;
         }
       } else {
         console.log('No saved project, selecting first available');
-        setCurrentProject(projects[0]);
+        if (projects.length > 0) {
+          setCurrentProject(projects[0]);
+        }
         return;
       }
     }
