@@ -71,12 +71,16 @@ export function useProjects() {
 
   const selectProject = (project: Project) => {
     setCurrentProject(project);
-    localStorage.setItem('currentProjectId', project.id);
+    if (project?.id) {
+      localStorage.setItem('currentProjectId', project.id);
+      console.log('Saved current project to localStorage:', project.name);
+    }
   };
 
   const clearCurrentProject = () => {
     setCurrentProject(null);
     localStorage.removeItem('currentProjectId');
+    console.log('Removed current project from localStorage');
   };
 
   // Create a new project
@@ -163,7 +167,7 @@ export function useProjects() {
   return {
     projects,
     currentProject,
-    setCurrentProject,
+    setCurrentProject: selectProject,
     loading,
     createProject,
     updateProject,
