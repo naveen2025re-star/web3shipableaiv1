@@ -93,7 +93,8 @@ export default function Sidebar({
   };
 
   return (
-    <div className="w-64 bg-gray-900 text-white flex flex-col h-full relative">
+    <>
+      <div className="w-64 bg-gray-900 text-white flex flex-col h-full relative">
       {/* Header */}
       <div className="p-4 border-b border-gray-700">
         {/* Back to Dashboard */}
@@ -280,14 +281,15 @@ export default function Sidebar({
           </button>
         </div>
       </div>
-    </div>
+      </div>
 
-    {/* Backdrop for dropdown */}
-    {showProjectDropdown && (
-      <div
-        className="fixed inset-0 z-40"
-        onClick={() => setShowProjectDropdown(false)}
-      />
-    )}
+      {/* Backdrop for dropdown */}
+      {showProjectDropdown && (
+        <div
+          className="fixed inset-0 z-40"
+          onClick={() => setShowProjectDropdown(false)}
+        />
+      )}
+    </>
   );
 }
