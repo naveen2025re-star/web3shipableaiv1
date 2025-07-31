@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Github, Key, Folder, Download, AlertCircle, CheckCircle, Eye, EyeOff, FileText } from 'lucide-react';
+import { RepoFileSelector } from './RepoFileSelector';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import RepoFileSelector from './RepoFileSelector';
@@ -34,6 +35,8 @@ export default function GithubIntegration({
   const [repositories, setRepositories] = useState<Repository[]>([]);
   const [selectedRepo, setSelectedRepo] = useState<Repository | null>(null);
   const [loading, setLoading] = useState(false);
+  const [showFileSelector, setShowFileSelector] = useState(false);
+  const [selectedRepo, setSelectedRepo] = useState<{ owner: string; repo: string } | null>(null);
   const [fetchingRepos, setFetchingRepos] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');

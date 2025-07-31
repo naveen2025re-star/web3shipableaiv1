@@ -1,290 +1,259 @@
 import React, { useState, useEffect } from 'react';
-import { X, File, Folder, FolderOpen, Code, Check, Loader2 } from 'lucide-react';
+import { ChevronRight, ChevronDown, File, Folder, Code, FileText } from 'lucide-react';
 
-interface RepoFile {
+interface FileItem {
   name: string;
   path: string;
   type: 'file' | 'dir';
   size?: number;
   download_url?: string;
+  isCodeFile?: boolean;
 }
 
 interface RepoFileSelectorProps {
-  isOpen: boolean;
-  onClose: () => void;
-  repoDetails: { owner: string; repo: string };
-  onFilesSelect: (files: { path: string; content: string }[]) => void;
-  githubPat: string;
+  owner: string;
+  repo: string;
+  onFilesSelected: (files: { path: string; content: string }[]) => void;
+  onCancel: () => void;
 }
 
-export default function RepoFileSelector({ 
-  isOpen, 
-  onClose, 
-  repoDetails, 
-  onFilesSelect,
-  githubPat 
-}: RepoFileSelectorProps) {
-  const [files, setFiles] = useState<RepoFile[]>([]);
+export const RepoFileSelector: React.FC<RepoFileSelectorProps> = ({
+  owner,
+  repo,
+  onFilesSelected,
+  onCancel
+}) => {
+  const [files, setFiles] = useState<FileItem[]>([]);
   const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
   const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set());
-  const [loading, setLoading] = useState(false);
-  const [analyzing, setAnalyzing] = useState(false);
-  const [currentPath, setCurrentPath] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [loadingFiles, setLoadingFiles] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (isOpen && repoDetails) {
-      fetchFiles('');
-    }
-  }, [isOpen, repoDetails]);
+    fetchFiles('');
+  }, [owner, repo]);
 
-  const fetchFiles = async (path: string) => {
-    setLoading(true);
+  const fetchFiles = async (path: string = '') => {
     try {
-      const url = `https://api.github.com/repos/${repoDetails.owner}/${repoDetails.repo}/contents/${path}`;
-      const response = await fetch(url, {
-        headers: {
-          'Authorization': `token ${githubPat}`,
-          'Accept': 'application/vnd.github.v3+json',
-        },
-      });
+      setLoading(true);
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/list-github-repos/list-files?owner=${owner}&repo=${repo}&path=${path}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
 
       if (!response.ok) {
-        throw new Error(`Failed to fetch files: ${response.statusText}`);
+        throw new Error('Failed to fetch repository files');
       }
 
       const data = await response.json();
-      const fileList = Array.isArray(data) ? data : [data];
-      
-      if (path === '') {
-        setFiles(fileList);
-      } else {
-        // Update files list with expanded directory contents
-        setFiles(prev => {
-          const newFiles = [...prev];
-          const dirIndex = newFiles.findIndex(f => f.path === path);
-          if (dirIndex !== -1) {
-            newFiles.splice(dirIndex + 1, 0, ...fileList.map(f => ({ ...f, parentPath: path })));
-          }
-          return newFiles;
-        });
-      }
-    } catch (error) {
-      console.error('Error fetching files:', error);
-      alert('Failed to fetch repository files. Please check your GitHub token.');
+      setFiles(data.files || []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch files');
     } finally {
       setLoading(false);
     }
   };
 
-  const toggleDirectory = async (dirPath: string) => {
-    if (expandedDirs.has(dirPath)) {
-      setExpandedDirs(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(dirPath);
-        return newSet;
-      });
-      // Remove files from this directory
-      setFiles(prev => prev.filter(f => !f.path.startsWith(dirPath + '/')));
-    } else {
-      setExpandedDirs(prev => new Set(prev).add(dirPath));
-      await fetchFiles(dirPath);
+  const fetchFileContent = async (filePath: string): Promise<string> => {
+    const response = await fetch(
+      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/list-github-repos/get-file-content?owner=${owner}&repo=${repo}&path=${filePath}`,
+      {
+        headers: {
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch content for ${filePath}`);
     }
+
+    const data = await response.json();
+    return data.content;
   };
 
   const toggleFileSelection = (filePath: string) => {
-    setSelectedFiles(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(filePath)) {
-        newSet.delete(filePath);
-      } else {
-        newSet.add(filePath);
-      }
-      return newSet;
-    });
+    const newSelected = new Set(selectedFiles);
+    if (newSelected.has(filePath)) {
+      newSelected.delete(filePath);
+    } else {
+      newSelected.add(filePath);
+    }
+    setSelectedFiles(newSelected);
   };
 
-  const fetchFileContent = async (file: RepoFile): Promise<string> => {
-    if (!file.download_url) {
-      throw new Error('No download URL available for file');
+  const toggleDirectory = async (dirPath: string) => {
+    const newExpanded = new Set(expandedDirs);
+    if (newExpanded.has(dirPath)) {
+      newExpanded.delete(dirPath);
+    } else {
+      newExpanded.add(dirPath);
+      // Fetch directory contents if not already loaded
+      await fetchFiles(dirPath);
     }
-
-    const response = await fetch(file.download_url, {
-      headers: {
-        'Authorization': `token ${githubPat}`,
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch file content: ${response.statusText}`);
-    }
-
-    return await response.text();
+    setExpandedDirs(newExpanded);
   };
 
   const handleAnalyzeSelected = async () => {
     if (selectedFiles.size === 0) {
-      alert('Please select at least one file to analyze.');
+      alert('Please select at least one file to analyze');
       return;
     }
 
-    setAnalyzing(true);
+    setLoadingFiles(true);
     try {
-      const selectedFileObjects = files.filter(f => 
-        f.type === 'file' && selectedFiles.has(f.path)
-      );
-
       const filesWithContent = await Promise.all(
-        selectedFileObjects.map(async (file) => {
-          try {
-            const content = await fetchFileContent(file);
-            return { path: file.path, content };
-          } catch (error) {
-            console.error(`Error fetching content for ${file.path}:`, error);
-            return { path: file.path, content: `Error loading file: ${error.message}` };
-          }
+        Array.from(selectedFiles).map(async (filePath) => {
+          const content = await fetchFileContent(filePath);
+          return { path: filePath, content };
         })
       );
 
-      onFilesSelect(filesWithContent);
-      onClose();
-    } catch (error) {
-      console.error('Error analyzing files:', error);
-      alert('Failed to analyze selected files. Please try again.');
+      onFilesSelected(filesWithContent);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch file contents');
     } finally {
-      setAnalyzing(false);
+      setLoadingFiles(false);
     }
   };
 
-  const getFileIcon = (file: RepoFile) => {
+  const getFileIcon = (file: FileItem) => {
     if (file.type === 'dir') {
-      return expandedDirs.has(file.path) ? 
-        <FolderOpen className="w-4 h-4 text-blue-500" /> : 
-        <Folder className="w-4 h-4 text-blue-500" />;
+      return <Folder className="w-4 h-4 text-blue-500" />;
     }
-    
-    const ext = file.name.split('.').pop()?.toLowerCase();
-    const codeExtensions = ['js', 'ts', 'jsx', 'tsx', 'py', 'sol', 'rs', 'go', 'java', 'cpp', 'c', 'h'];
-    
-    if (codeExtensions.includes(ext || '')) {
+    if (file.isCodeFile) {
       return <Code className="w-4 h-4 text-green-500" />;
     }
-    
-    return <File className="w-4 h-4 text-gray-500" />;
+    return <FileText className="w-4 h-4 text-gray-500" />;
   };
 
-  const getIndentLevel = (filePath: string) => {
-    return filePath.split('/').length - 1;
+  const formatFileSize = (size?: number) => {
+    if (!size) return '';
+    if (size < 1024) return `${size}B`;
+    if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)}KB`;
+    return `${(size / (1024 * 1024)).toFixed(1)}MB`;
   };
 
-  if (!isOpen) return null;
+  if (loading) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+          <div className="flex items-center justify-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+            <span className="ml-3">Loading repository files...</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+          <h3 className="text-lg font-semibold text-red-600 mb-2">Error</h3>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <div className="flex justify-end space-x-3">
+            <button
+              onClick={onCancel}
+              className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl h-3/4 flex flex-col">
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900">
-              Select Files to Analyze
-            </h2>
-            <p className="text-sm text-gray-600 mt-1">
-              {repoDetails.owner}/{repoDetails.repo}
-            </p>
+      <div className="bg-white rounded-lg p-6 max-w-4xl w-full mx-4 max-h-[80vh] flex flex-col">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold">
+            Select Files from {owner}/{repo}
+          </h3>
+          <div className="text-sm text-gray-500">
+            {selectedFiles.size} file{selectedFiles.size !== 1 ? 's' : ''} selected
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
         </div>
 
-        <div className="flex-1 overflow-hidden flex flex-col">
-          <div className="p-4 border-b border-gray-200">
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-gray-600">
-                {selectedFiles.size} file{selectedFiles.size !== 1 ? 's' : ''} selected
-              </p>
-              <button
-                onClick={handleAnalyzeSelected}
-                disabled={selectedFiles.size === 0 || analyzing}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-              >
-                {analyzing ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Analyzing...
-                  </>
-                ) : (
-                  <>
-                    <Code className="w-4 h-4" />
-                    Analyze Selected Files
-                  </>
-                )}
-              </button>
+        <div className="flex-1 overflow-y-auto border border-gray-200 rounded-md p-4 mb-4">
+          {files.length === 0 ? (
+            <div className="text-center text-gray-500 py-8">
+              No files found in this repository
             </div>
-          </div>
-
-          <div className="flex-1 overflow-y-auto p-4">
-            {loading && files.length === 0 ? (
-              <div className="flex items-center justify-center h-32">
-                <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
-                <span className="ml-2 text-gray-600">Loading repository files...</span>
-              </div>
-            ) : (
-              <div className="space-y-1">
-                {files.map((file) => (
-                  <div
-                    key={file.path}
-                    className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded-lg cursor-pointer"
-                    style={{ paddingLeft: `${getIndentLevel(file.path) * 20 + 8}px` }}
-                  >
-                    {file.type === 'dir' ? (
-                      <div
-                        className="flex items-center gap-2 flex-1"
-                        onClick={() => toggleDirectory(file.path)}
-                      >
-                        {getFileIcon(file)}
-                        <span className="text-sm font-medium text-gray-700">
-                          {file.name}
+          ) : (
+            <div className="space-y-1">
+              {files.map((file) => (
+                <div key={file.path} className="flex items-center space-x-2 py-1">
+                  {file.type === 'dir' ? (
+                    <button
+                      onClick={() => toggleDirectory(file.path)}
+                      className="flex items-center space-x-2 hover:bg-gray-50 rounded px-2 py-1 flex-1"
+                    >
+                      {expandedDirs.has(file.path) ? (
+                        <ChevronDown className="w-4 h-4" />
+                      ) : (
+                        <ChevronRight className="w-4 h-4" />
+                      )}
+                      {getFileIcon(file)}
+                      <span className="text-sm">{file.name}</span>
+                    </button>
+                  ) : (
+                    <label className="flex items-center space-x-2 hover:bg-gray-50 rounded px-2 py-1 flex-1 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={selectedFiles.has(file.path)}
+                        onChange={() => toggleFileSelection(file.path)}
+                        className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                      />
+                      {getFileIcon(file)}
+                      <span className="text-sm flex-1">{file.name}</span>
+                      {file.size && (
+                        <span className="text-xs text-gray-400">
+                          {formatFileSize(file.size)}
                         </span>
-                      </div>
-                    ) : (
-                      <>
-                        <div
-                          className="flex items-center gap-2 flex-1"
-                          onClick={() => toggleFileSelection(file.path)}
-                        >
-                          {getFileIcon(file)}
-                          <span className="text-sm text-gray-700">
-                            {file.name}
-                          </span>
-                          {file.size && (
-                            <span className="text-xs text-gray-500">
-                              ({(file.size / 1024).toFixed(1)} KB)
-                            </span>
-                          )}
-                        </div>
-                        <div
-                          className={`w-5 h-5 rounded border-2 flex items-center justify-center cursor-pointer ${
-                            selectedFiles.has(file.path)
-                              ? 'bg-blue-600 border-blue-600'
-                              : 'border-gray-300 hover:border-blue-400'
-                          }`}
-                          onClick={() => toggleFileSelection(file.path)}
-                        >
-                          {selectedFiles.has(file.path) && (
-                            <Check className="w-3 h-3 text-white" />
-                          )}
-                        </div>
-                      </>
-                    )}
-                  </div>
-                ))}
-              </div>
+                      )}
+                    </label>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="flex justify-end space-x-3">
+          <button
+            onClick={onCancel}
+            className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
+            disabled={loadingFiles}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleAnalyzeSelected}
+            disabled={selectedFiles.size === 0 || loadingFiles}
+            className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+          >
+            {loadingFiles ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                Loading Files...
+              </>
+            ) : (
+              `Analyze Selected Files (${selectedFiles.size})`
             )}
-          </div>
+          </button>
         </div>
       </div>
     </div>
   );
-}
+};

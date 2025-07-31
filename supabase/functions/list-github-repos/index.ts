@@ -201,6 +201,12 @@ Deno.serve(async (req: Request) => {
       }
     );
 
+  // Helper function to check if file is a code file
+  function isCodeFile(filename: string): boolean {
+    const codeExtensions = ['.sol', '.vy', '.rs', '.js', '.ts', '.jsx', '.tsx', '.py', '.cairo', '.move', '.go', '.java', '.cpp', '.c', '.h', '.json', '.md'];
+    return codeExtensions.some(ext => filename.toLowerCase().endsWith(ext));
+  }
+
   } catch (error) {
     console.error("Edge function error:", error);
     

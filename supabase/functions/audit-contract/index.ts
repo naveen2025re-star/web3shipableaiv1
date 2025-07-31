@@ -39,6 +39,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const { code, description, projectContext }: AuditRequest = await req.json();
+    const { code, description, githubRepo, projectContext }: AuditRequest = await req.json();
 
     if (!code?.trim() && !githubRepo) {
       return new Response(
