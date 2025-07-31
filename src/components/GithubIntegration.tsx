@@ -158,26 +158,25 @@ export default function GithubIntegration({
   };
 
   const handleSelectFiles = (repo: Repository) => {
-    setSelectedRepo({ owner: repo.owner.login, repo: repo.name });
+    setSelectedRepoForFiles({ owner: repo.owner.login, repo: repo.name });
     setShowFileSelector(true);
   };
 
   const handleFilesSelected = (files: { path: string; content: string }[]) => {
-    if (!selectedRepo) return;
-    
-    // Combine all file contents with file headers
-    const combinedContent = files.map(file => 
-      `// File: ${selectedRepo.owner}/${selectedRepo.repo}/${file.path}\n${file.content}`
-    ).join('\n\n');
-    
-    onFilesSelected?.(combinedContent, selectedRepo);
-    setShowFileSelector(false);
-    setSelectedRepo(null);
-  };
+    if (!selectedRepoForFiles) return;
 
-  const handleCancelFileSelection = () => {
+    // Create a comprehensive analysis prompt
+    const fileContents = files.map(file => 
+      `// File: ${file.path}\n${file.content}`
+    ).join('\n\n' + '='.repeat(80) + '\n\n');
+
+    // Call the onFilesSelected with the file content
+    if (onFilesSelected) {
+      onFilesSelected(fileContents, selectedRepoForFiles);
+    }
+    
     setShowFileSelector(false);
-    setSelectedRepo(null);
+    setSelectedRepoForFiles(null);
   };
 
   const getLanguageColor = (language: string | null) => {
@@ -374,6 +373,15 @@ export default function GithubIntegration({
           repoDetails={selectedRepoForFiles}
           onFilesSelect={handleFilesSelected}
           githubPat={pat}
+        />
+      )}
+      
+      {showFileSelector && selectedRepo && (
+        <RepoFileSelector
+          owner={selectedRepo.owner}
+          repo={selectedRepo.repo}
+          onFilesSelected={handleFilesSelected}
+          onCancel={handleCancelFileSelection}
         />
       )}
     </div>
