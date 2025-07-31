@@ -176,6 +176,11 @@ export default function GithubIntegration({
     setSelectedRepoForFiles(null);
   };
 
+  const handleCancelFileSelection = () => {
+    setShowFileSelector(false);
+    setSelectedRepoForFiles(null);
+  };
+
   const getLanguageColor = (language: string | null) => {
     const colors: { [key: string]: string } = {
       'JavaScript': 'bg-yellow-100 text-yellow-800',
