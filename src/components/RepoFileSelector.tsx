@@ -37,11 +37,14 @@ export const RepoFileSelector: React.FC<RepoFileSelectorProps> = ({
   const fetchFiles = async (path: string = '') => {
     try {
       setLoading(true);
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/list-github-repos/list-files?owner=${owner}&repo=${repo}&path=${path}`,
+        `${supabaseUrl}/functions/v1/list-github-repos?action=list-files&owner=${owner}&repo=${repo}&path=${encodeURIComponent(path)}`,
         {
           headers: {
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            'Authorization': `Bearer ${supabaseAnonKey}`,
             'Content-Type': 'application/json',
           },
         }
@@ -61,11 +64,14 @@ export const RepoFileSelector: React.FC<RepoFileSelectorProps> = ({
   };
 
   const fetchFileContent = async (filePath: string): Promise<string> => {
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+    
     const response = await fetch(
-      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/list-github-repos/get-file-content?owner=${owner}&repo=${repo}&path=${filePath}`,
+      `${supabaseUrl}/functions/v1/list-github-repos?action=get-file-content&owner=${owner}&repo=${repo}&path=${encodeURIComponent(filePath)}`,
       {
         headers: {
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Authorization': `Bearer ${supabaseAnonKey}`,
           'Content-Type': 'application/json',
         },
       }

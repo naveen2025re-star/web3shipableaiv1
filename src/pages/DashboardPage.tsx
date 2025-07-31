@@ -100,44 +100,45 @@ export default function DashboardPage() {
   };
 
   const handleGithubRepositorySelect = async (repo: any) => {
+    // Just close the GitHub integration - let the user select files first
+    setShowGithubIntegration(false);
+  };
+  
+  const handleGithubFilesSelected = async (content: string, repoDetails: { owner: string; repo: string }) => {
     setIsCreatingFromGithub(true);
     
     try {
-      // Determine the contract language based on the repository language
-      const languageMapping: { [key: string]: string } = {
-        'Solidity': 'Solidity',
-        'JavaScript': 'JavaScript', 
-        'TypeScript': 'TypeScript',
-        'Rust': 'Rust',
-        'Python': 'Python',
-        'Go': 'Go',
-        'Java': 'Java'
-      };
+      // Determine the contract language based on file extensions in content
+      let contractLanguage = 'Solidity';
+      if (content.includes('.js') || content.includes('JavaScript')) contractLanguage = 'JavaScript';
+      else if (content.includes('.ts') || content.includes('TypeScript')) contractLanguage = 'TypeScript';
+      else if (content.includes('.rs') || content.includes('Rust')) contractLanguage = 'Rust';
+      else if (content.includes('.py') || content.includes('Python')) contractLanguage = 'Python';
       
-      const contractLanguage = languageMapping[repo.language] || 'Solidity';
-      const projectName = `${repo.name} (GitHub)`;
+      const projectName = `${repoDetails.repo} (GitHub Files)`;
       
-      // Create project from GitHub repo
+      // Create project from selected files
       const newProject = await createProject(projectName, contractLanguage, 'Ethereum');
       
       if (newProject) {
         // Set as current project and navigate to chat
         setCurrentProject(newProject);
         
-        // Store repo details for scanning
-        localStorage.setItem('pendingGithubScan', JSON.stringify({
-          owner: repo.owner.login,
-          repo: repo.name,
+        // Store file content for immediate analysis
+        localStorage.setItem('pendingFileAnalysis', JSON.stringify({
+          content: content,
+          repoDetails: repoDetails,
           projectId: newProject.id
         }));
         
         navigate('/app');
       }
     } catch (error) {
-      console.error('Error creating project from GitHub repo:', error);
-      alert('Failed to create project from repository');
+      console.error('Error creating project from GitHub files:', error);
+      alert('Failed to create project from selected files');
     } finally {
       setIsCreatingFromGithub(false);
+      setShowGithubIntegration(false);
     }
   };
 
@@ -409,6 +410,7 @@ export default function DashboardPage() {
                 
                 <GithubIntegration 
                   onFullRepositorySelect={handleGithubRepositorySelect}
+                  onFilesSelected={handleGithubFilesSelected}
                   showRepositoryList={true} 
                 />
               </div>

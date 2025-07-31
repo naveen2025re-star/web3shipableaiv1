@@ -47,26 +47,23 @@ export default function ChatApp() {
     // If no user, redirect will be handled by route protection
     if (!user) return;
 
-    // Check for pending GitHub scan
-    const pendingGithubScan = localStorage.getItem('pendingGithubScan');
-    if (pendingGithubScan && currentProject) {
+    // Check for pending file analysis
+    const pendingFileAnalysis = localStorage.getItem('pendingFileAnalysis');
+    if (pendingFileAnalysis && currentProject) {
       try {
-        const scanData = JSON.parse(pendingGithubScan);
-        if (scanData.projectId === currentProject.id) {
-          // Clear the pending scan
-          localStorage.removeItem('pendingGithubScan');
+        const analysisData = JSON.parse(pendingFileAnalysis);
+        if (analysisData.projectId === currentProject.id) {
+          // Clear the pending analysis
+          localStorage.removeItem('pendingFileAnalysis');
           
-          // Trigger GitHub repository scan
+          // Trigger file analysis
           setTimeout(() => {
-            handleAudit('', `Scanning GitHub repository: ${scanData.owner}/${scanData.repo}`, {
-              owner: scanData.owner,
-              repo: scanData.repo
-            });
+            handleAudit(analysisData.content, `Analyzing selected files from: ${analysisData.repoDetails.owner}/${analysisData.repoDetails.repo}`);
           }, 1000);
         }
       } catch (error) {
-        console.error('Error processing pending GitHub scan:', error);
-        localStorage.removeItem('pendingGithubScan');
+        console.error('Error processing pending file analysis:', error);
+        localStorage.removeItem('pendingFileAnalysis');
       }
     }
     console.log('ChatApp useEffect - projects:', projects.length, 'currentProject:', currentProject?.name || 'null');
