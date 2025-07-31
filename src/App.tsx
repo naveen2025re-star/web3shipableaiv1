@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import LandingPage from './pages/LandingPage';
 import AuthPage from './pages/AuthPage';
 import ChatApp from './pages/ChatApp';
+import DeveloperMode from './pages/DeveloperMode';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -59,6 +60,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <ChatApp />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/dev" 
+            element={
+              <ProtectedRoute>
+                <DeveloperMode />
               </ProtectedRoute>
             } 
           />
