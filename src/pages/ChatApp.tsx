@@ -15,6 +15,9 @@ export default function ChatApp() {
     projects,
     currentProject,
     setCurrentProject,
+    projectsLoading,
+    user,
+    selectProject
   } = useProjects();
 
   console.log('ChatApp rendered with currentProject:', currentProject?.name || 'null');
@@ -34,6 +37,8 @@ export default function ChatApp() {
     deleteChatSession,
     updateChatSessionTitle,
   } = useChatSessions(currentProject);
+
+  const { performAudit } = useAuditWithSessions();
 
   useEffect(() => {
     // Wait for projects to load
@@ -57,7 +62,7 @@ export default function ChatApp() {
       const saved = localStorage.getItem('currentProject');
       if (saved) {
         try {
-  }, [projects, currentProject, navigate, selectProject, projectsLoading, user]);
+          const savedProject = JSON.parse(saved);
           console.log('Found saved project:', savedProject.name);
           // Verify the saved project still exists
           const existingProject = projects.find(p => p.id === savedProject.id);
@@ -77,7 +82,7 @@ export default function ChatApp() {
         setCurrentProject(projects[0]);
       }
     }
-  }, [projects, currentProject, setCurrentProject, navigate]);
+  }, [projects, currentProject, setCurrentProject, navigate, projectsLoading, user, selectProject]);
 
   const handleNewChat = () => {
     createNewSession();
