@@ -356,6 +356,7 @@ export default function DashboardPage() {
                   className={`group bg-white rounded-2xl border border-gray-200 hover:border-blue-200 hover:shadow-xl transition-all duration-300 overflow-hidden ${
                     viewMode === 'list' ? 'flex items-center p-6' : 'p-6'
                   }`}
+                 onClick={() => handleProjectSelect(project)}
                 >
                   <div className={`${viewMode === 'list' ? 'flex-1' : ''}`}>
                     <div className={`flex items-start justify-between ${viewMode === 'list' ? 'items-center' : 'mb-4'}`}>
@@ -420,19 +421,14 @@ export default function DashboardPage() {
                     </div>
 
                     {/* Open Project Button */}
-                    <button
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        handleProjectSelect(project);
-                      }}
-                      className={`w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-200 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center justify-center ${
+                    <div
+                      className={`w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-200 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center justify-center cursor-pointer ${
                         viewMode === 'list' ? 'px-6 py-2 ml-4' : 'px-4 py-3 mt-4'
                       }`}
                     >
                       <Shield className="h-4 w-4 mr-2" />
                       Start Auditing
-                    </button>
+                    </div>
                   </div>
                 </div>
               ))}
