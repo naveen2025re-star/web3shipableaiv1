@@ -47,6 +47,8 @@ export default function DashboardPage() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [showGithubIntegration, setShowGithubIntegration] = useState(false);
   const [isCreatingFromGithub, setIsCreatingFromGithub] = useState(false);
+  const [showRepoFileBrowser, setShowRepoFileBrowser] = useState(false);
+  const [selectedRepoForBrowsing, setSelectedRepoForBrowsing] = useState<any>(null);
 
   const handleCreateProject = () => {
     setProjectModalMode('create');
@@ -100,7 +102,9 @@ export default function DashboardPage() {
   };
 
   const handleGithubRepositorySelect = async (repo: any) => {
-    // Just close the GitHub integration - let the user select files first
+    // Show file browser for the selected repository
+    setSelectedRepoForBrowsing(repo);
+    setShowRepoFileBrowser(true);
     setShowGithubIntegration(false);
   };
   
@@ -139,7 +143,14 @@ export default function DashboardPage() {
     } finally {
       setIsCreatingFromGithub(false);
       setShowGithubIntegration(false);
+      setShowRepoFileBrowser(false);
+      setSelectedRepoForBrowsing(null);
     }
+  };
+
+  const handleCancelFileBrowser = () => {
+    setShowRepoFileBrowser(false);
+    setSelectedRepoForBrowsing(null);
   };
 
   const getLanguageColor = (language: string) => {
@@ -565,6 +576,64 @@ export default function DashboardPage() {
               >
                 Delete Project
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Repository File Browser Modal */}
+      {showRepoFileBrowser && selectedRepoForBrowsing && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl max-w-6xl w-full max-h-[90vh] flex flex-col">
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <div className="flex items-center space-x-3">
+                <div className="bg-gray-900 p-2 rounded-lg">
+                  <Github className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-semibold text-gray-900">
+                    Browse Repository Files
+                  </h3>
+                  <p className="text-sm text-gray-600">
+                    {selectedRepoForBrowsing.full_name}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={handleCancelFileBrowser}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <X className="h-5 w-5 text-gray-500" />
+              </button>
+            </div>
+
+            {/* File Browser Content */}
+            <div className="flex-1 p-6 overflow-hidden">
+              {isCreatingFromGithub && (
+                <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-center space-x-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                  <span className="text-blue-700 text-sm">Creating project from selected files...</span>
+                </div>
+              )}
+              
+              <RepoFileSelector
+                owner={selectedRepoForBrowsing.owner.login}
+                repo={selectedRepoForBrowsing.name}
+                onFilesSelected={(files) => {
+                  const content = files.map(file => 
+                    `// File: ${file.path}\n${file.content}`
+                  ).join('\n\n' + '='.repeat(80) + '\n\n');
+                  
+                  const repoDetails = {
+                    owner: selectedRepoForBrowsing.owner.login,
+                    repo: selectedRepoForBrowsing.name
+                  };
+                  
+                  handleGithubFilesSelected(content, repoDetails);
+                }}
+                onCancel={handleCancelFileBrowser}
+              />
             </div>
           </div>
         </div>

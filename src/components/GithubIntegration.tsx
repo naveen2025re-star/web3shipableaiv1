@@ -285,7 +285,6 @@ export default function GithubIntegration({
             {repositories.map((repo) => (
               <div
                 key={repo.id}
-                onClick={() => handleRepositorySelect(repo)}
                 className={`p-4 border rounded-lg cursor-pointer transition-all duration-200 hover:bg-gray-50 hover:shadow-md hover:border-blue-300 ${
                   selectedRepo?.id === repo.id ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
                 }`}
@@ -316,17 +315,23 @@ export default function GithubIntegration({
                     )}
                     <div className="flex space-x-2">
                       <button
-                        onClick={() => handleRepositorySelect(repo)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRepositorySelect(repo);
+                        }}
                         className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
                       >
-                        Create Project & Scan
+                        Browse Files
                       </button>
                       <button
-                        onClick={() => handleSelectFiles(repo)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSelectFiles(repo);
+                        }}
                         className="px-3 py-1.5 text-sm bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors flex items-center gap-1"
                       >
                         <FileText className="w-4 h-4" />
-                        Select Files
+                        Quick Select
                       </button>
                     </div>
                   </div>
@@ -358,7 +363,7 @@ export default function GithubIntegration({
                 onClick={handleCreateProjectFromRepo}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm"
               >
-                Create Project & Scan
+                Browse Files & Create Project
               </button>
             )}
           </div>

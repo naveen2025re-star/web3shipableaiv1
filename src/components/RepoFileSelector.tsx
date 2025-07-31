@@ -17,7 +17,7 @@ interface RepoFileSelectorProps {
   onCancel: () => void;
 }
 
-export const RepoFileSelector: React.FC<RepoFileSelectorProps> = ({
+const RepoFileSelector: React.FC<RepoFileSelectorProps> = ({
   owner,
   repo,
   onFilesSelected,
@@ -26,6 +26,8 @@ export const RepoFileSelector: React.FC<RepoFileSelectorProps> = ({
   const [files, setFiles] = useState<FileItem[]>([]);
   const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
   const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set());
+  const [currentPath, setCurrentPath] = useState<string>('');
+  const [pathHistory, setPathHistory] = useState<string[]>(['']);
   const [loading, setLoading] = useState(true);
   const [loadingFiles, setLoadingFiles] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,14 +39,19 @@ export const RepoFileSelector: React.FC<RepoFileSelectorProps> = ({
   const fetchFiles = async (path: string = '') => {
     try {
       setLoading(true);
+      setError(null);
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      
+      if (!supabaseUrl || !supabaseAnonKey) {
+        throw new Error('Supabase configuration is missing');
+      }
       
       const response = await fetch(
         `${supabaseUrl}/functions/v1/list-github-repos?action=list-files&owner=${owner}&repo=${repo}&path=${encodeURIComponent(path)}`,
         {
           headers: {
-            'Authorization': `Bearer ${supabaseAnonKey}`,
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
             'Content-Type': 'application/json',
           },
         }
@@ -55,9 +62,16 @@ export const RepoFileSelector: React.FC<RepoFileSelectorProps> = ({
       }
 
       const data = await response.json();
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to fetch files');
+      }
+      
       setFiles(data.files || []);
+      setCurrentPath(path);
     } catch (err) {
+      console.error('Error fetching files:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch files');
+      setFiles([]);
     } finally {
       setLoading(false);
     }
@@ -65,13 +79,12 @@ export const RepoFileSelector: React.FC<RepoFileSelectorProps> = ({
 
   const fetchFileContent = async (filePath: string): Promise<string> => {
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
     
     const response = await fetch(
       `${supabaseUrl}/functions/v1/list-github-repos?action=get-file-content&owner=${owner}&repo=${repo}&path=${encodeURIComponent(filePath)}`,
       {
         headers: {
-          'Authorization': `Bearer ${supabaseAnonKey}`,
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
           'Content-Type': 'application/json',
         },
       }
@@ -82,6 +95,9 @@ export const RepoFileSelector: React.FC<RepoFileSelectorProps> = ({
     }
 
     const data = await response.json();
+    if (!data.success) {
+      throw new Error(data.error || `Failed to fetch content for ${filePath}`);
+    }
     return data.content;
   };
 
@@ -101,10 +117,30 @@ export const RepoFileSelector: React.FC<RepoFileSelectorProps> = ({
       newExpanded.delete(dirPath);
     } else {
       newExpanded.add(dirPath);
-      // Fetch directory contents if not already loaded
+      // Navigate into directory
+      setPathHistory(prev => [...prev, dirPath]);
       await fetchFiles(dirPath);
     }
     setExpandedDirs(newExpanded);
+  };
+
+  const navigateBack = () => {
+    if (pathHistory.length > 1) {
+      const newHistory = [...pathHistory];
+      newHistory.pop();
+      const previousPath = newHistory[newHistory.length - 1];
+      setPathHistory(newHistory);
+      fetchFiles(previousPath);
+    }
+  };
+
+  const navigateToPath = (targetPath: string) => {
+    const pathIndex = pathHistory.indexOf(targetPath);
+    if (pathIndex !== -1) {
+      const newHistory = pathHistory.slice(0, pathIndex + 1);
+      setPathHistory(newHistory);
+      fetchFiles(targetPath);
+    }
   };
 
   const handleAnalyzeSelected = async () => {
@@ -149,12 +185,10 @@ export const RepoFileSelector: React.FC<RepoFileSelectorProps> = ({
 
   if (loading) {
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-          <div className="flex items-center justify-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-            <span className="ml-3">Loading repository files...</span>
-          </div>
+      <div className="flex items-center justify-center py-12">
+        <div className="flex items-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+          <span className="ml-3 text-gray-600">Loading repository files...</span>
         </div>
       </div>
     );
@@ -162,88 +196,95 @@ export const RepoFileSelector: React.FC<RepoFileSelectorProps> = ({
 
   if (error) {
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-          <h3 className="text-lg font-semibold text-red-600 mb-2">Error</h3>
+      <div className="text-center py-12">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md mx-auto">
+          <h3 className="text-lg font-semibold text-red-600 mb-2">Error Loading Files</h3>
           <p className="text-gray-600 mb-4">{error}</p>
-          <div className="flex justify-end space-x-3">
-            <button
-              onClick={onCancel}
-              className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
-            >
-              Close
-            </button>
-          </div>
+          <button
+            onClick={() => fetchFiles(currentPath)}
+            className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
+          >
+            Retry
+          </button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 max-w-4xl w-full mx-4 max-h-[80vh] flex flex-col">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold">
-            Select Files from {owner}/{repo}
-          </h3>
-          <div className="text-sm text-gray-500">
-            {selectedFiles.size} file{selectedFiles.size !== 1 ? 's' : ''} selected
+    <div className="flex flex-col h-full">
+      {/* Breadcrumb Navigation */}
+      <div className="flex items-center justify-between mb-4 pb-4 border-b border-gray-200">
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={navigateBack}
+            disabled={pathHistory.length <= 1}
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </button>
+          <div className="flex items-center space-x-1 text-sm">
+            <span className="font-medium">{owner}/{repo}</span>
+            {pathHistory.map((path, index) => (
+              <React.Fragment key={index}>
+                <span className="text-gray-400">/</span>
+                <button
+                  onClick={() => navigateToPath(path)}
+                  className="text-blue-600 hover:text-blue-800 hover:underline"
+                >
+                  {path === '' ? 'root' : path.split('/').pop()}
+                </button>
+              </React.Fragment>
+            ))}
           </div>
         </div>
-
-        <div className="flex-1 overflow-y-auto border border-gray-200 rounded-md p-4 mb-4">
-          {files.length === 0 ? (
-            <div className="text-center text-gray-500 py-8">
-              No files found in this repository
-            </div>
-          ) : (
-            <div className="space-y-1">
-              {files.map((file) => (
-                <div key={file.path} className="flex items-center space-x-2 py-1">
-                  {file.type === 'dir' ? (
-                    <button
-                      onClick={() => toggleDirectory(file.path)}
-                      className="flex items-center space-x-2 hover:bg-gray-50 rounded px-2 py-1 flex-1"
-                    >
-                      {expandedDirs.has(file.path) ? (
-                        <ChevronDown className="w-4 h-4" />
-                      ) : (
-                        <ChevronRight className="w-4 h-4" />
-                      )}
-                      {getFileIcon(file)}
-                      <span className="text-sm">{file.name}</span>
-                    </button>
-                  ) : (
-                    <label className="flex items-center space-x-2 hover:bg-gray-50 rounded px-2 py-1 flex-1 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={selectedFiles.has(file.path)}
-                        onChange={() => toggleFileSelection(file.path)}
-                        className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                      />
-                      {getFileIcon(file)}
-                      <span className="text-sm flex-1">{file.name}</span>
-                      {file.size && (
-                        <span className="text-xs text-gray-400">
-                          {formatFileSize(file.size)}
-                        </span>
-                      )}
-                    </label>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
+        <div className="text-sm text-gray-500">
+          {selectedFiles.size} file{selectedFiles.size !== 1 ? 's' : ''} selected
         </div>
+      </div>
 
-        <div className="flex justify-end space-x-3">
-          <button
-            onClick={onCancel}
-            className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
-            disabled={loadingFiles}
-          >
-            Cancel
-          </button>
+      {/* File List */}
+      <div className="flex-1 overflow-y-auto border border-gray-200 rounded-md p-4 mb-4">
+        {files.length === 0 ? (
+          <div className="text-center text-gray-500 py-8">
+            <Folder className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+            <p>No files found in this directory</p>
+          </div>
+        ) : (
+          <div className="space-y-1">
+            {files.map((file) => (
+              <div key={file.path} className="flex items-center space-x-2 py-2 hover:bg-gray-50 rounded-lg px-2">
+                {file.type === 'dir' ? (
+                  <button
+                    onClick={() => toggleDirectory(file.path)}
+                    className="flex items-center space-x-3 flex-1 text-left"
+                  >
+                    <ChevronRight className="w-4 h-4 text-gray-400" />
+                    {getFileIcon(file)}
+                    <span className="text-sm font-medium">{file.name}</span>
+                  </button>
+                ) : (
+                  <label className="flex items-center space-x-3 flex-1 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={selectedFiles.has(file.path)}
+                      onChange={() => toggleFileSelection(file.path)}
+                      className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                    />
+                    {getFileIcon(file)}
+                    <span className="text-sm flex-1">{file.name}</span>
+                    {file.size && (
+                      <span className="text-xs text-gray-400">
+                        {formatFileSize(file.size)}
+                      </span>
+                    )}
+                  </label>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
           <button
             onClick={handleAnalyzeSelected}
             disabled={selectedFiles.size === 0 || loadingFiles}
@@ -264,4 +305,33 @@ export const RepoFileSelector: React.FC<RepoFileSelectorProps> = ({
   );
 };
 
+      {/* Action Buttons */}
+      <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+        <button
+          onClick={onCancel}
+          className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
+          disabled={loadingFiles}
+        >
+          Cancel
+        </button>
+        <button
+          onClick={handleAnalyzeSelected}
+          disabled={selectedFiles.size === 0 || loadingFiles}
+          className="px-6 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+        >
+          {loadingFiles ? (
+            <>
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+              Loading Files...
+            </>
+          ) : (
+            `Create Project & Analyze (${selectedFiles.size})`
+          )}
+        </button>
+      </div>
+    </div>
+  );
+};
+
+export default RepoFileSelector;
 export default RepoFileSelector
