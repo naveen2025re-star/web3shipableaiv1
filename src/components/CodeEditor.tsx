@@ -248,7 +248,7 @@ export default function CodeEditor({
             </div>
           </div>
         )}
-        <div ref={editorRef} className="h-full w-full" />
+        <div ref={editorRef} />
       </div>
     </div>
   );
