@@ -91,6 +91,164 @@ export default function ChatMessage({ type, content, findings, summary, timestam
   const exportReport = () => {
     if (!findings || !summary) return;
     
+    // Create structured report data
+    const reportData = {
+      metadata: {
+        title: "Smart Contract Security Audit Report",
+        generatedAt: timestamp.toISOString(),
+        timestamp: timestamp.toLocaleString(),
+        contractName: summary.contractName || "Smart Contract"
+      },
+      summary: {
+        totalFindings: summary.totalFindings,
+        riskBreakdown: {
+          critical: summary.criticalCount,
+          high: summary.highCount,
+          medium: summary.mediumCount,
+          low: summary.lowCount,
+          informational: summary.informationalCount
+        },
+        overallRisk: summary.overallRisk,
+        riskScore: summary.riskScore
+      },
+      findings: findings.map((finding, index) => ({
+        id: index + 1,
+        vulnerabilityName: finding.vulnerabilityName,
+        severity: finding.severity,
+        impact: finding.impact,
+        vulnerableCode: finding.vulnerableCode,
+        explanation: finding.explanation,
+        proofOfConcept: finding.proofOfConcept,
+        remediation: finding.remediation,
+        references: finding.references,
+        cveId: finding.cveId,
+        swcId: finding.swcId
+      })),
+      additionalObservations: summary.additionalObservations || [],
+      conclusion: summary.conclusion || "",
+      rawContent: content
+    };
+    
+    // Create both JSON and text versions
+    const jsonReport = JSON.stringify(reportData, null, 2);
+    const textReport = `
+SMART CONTRACT SECURITY AUDIT REPORT
+Generated: ${timestamp.toLocaleString()}
+Contract: ${summary.contractName || "Smart Contract"}
+
+EXECUTIVE SUMMARY
+=================
+Total Findings: ${summary.totalFindings}
+Overall Risk: ${summary.overallRisk}
+Risk Score: ${summary.riskScore}
+
+Risk Breakdown:
+- Critical: ${summary.criticalCount}
+- High: ${summary.highCount}
+- Medium: ${summary.mediumCount}
+- Low: ${summary.lowCount}
+- Informational: ${summary.informationalCount}
+
+DETAILED FINDINGS
+=================
+${findings.map((finding, index) => `
+${index + 1}. ${finding.vulnerabilityName}
+Severity: ${finding.severity}
+Impact: ${finding.impact}
+
+Vulnerable Code:
+${finding.vulnerableCode}
+
+Explanation:
+${finding.explanation}
+
+Proof of Concept:
+${finding.proofOfConcept}
+
+Remediation:
+${finding.remediation}
+
+${finding.references ? `References: ${finding.references}` : ''}
+${finding.cveId ? `CVE ID: ${finding.cveId}` : ''}
+${finding.swcId ? `SWC ID: ${finding.swcId}` : ''}
+`).join('\n---\n')}
+
+${summary.additionalObservations && summary.additionalObservations.length > 0 ? `
+ADDITIONAL OBSERVATIONS
+======================
+${summary.additionalObservations.join('\n')}
+` : ''}
+
+${summary.conclusion ? `
+CONCLUSION
+==========
+${summary.conclusion}
+` : ''}
+
+END OF REPORT
+    `.trim();
+    
+    // Create dropdown menu for export options
+    const exportMenu = document.createElement('div');
+    exportMenu.className = 'absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-xl z-50 min-w-48';
+    exportMenu.innerHTML = `
+      <button class="export-json w-full text-left px-4 py-2 hover:bg-gray-50 transition-colors border-b border-gray-100">
+        Export as JSON
+      </button>
+      <button class="export-text w-full text-left px-4 py-2 hover:bg-gray-50 transition-colors">
+        Export as Text
+      </button>
+    `;
+    
+    // Position and show menu
+    const exportButton = document.activeElement as HTMLElement;
+    const rect = exportButton.getBoundingClientRect();
+    exportMenu.style.position = 'fixed';
+    exportMenu.style.top = `${rect.bottom + 5}px`;
+    exportMenu.style.right = `${window.innerWidth - rect.right}px`;
+    
+    document.body.appendChild(exportMenu);
+    
+    // Handle JSON export
+    exportMenu.querySelector('.export-json')?.addEventListener('click', () => {
+      const blob = new Blob([jsonReport], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `audit-report-${Date.now()}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      document.body.removeChild(exportMenu);
+    });
+    
+    // Handle text export
+    exportMenu.querySelector('.export-text')?.addEventListener('click', () => {
+      const blob = new Blob([textReport], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `audit-report-${Date.now()}.txt`;
+      a.click();
+      URL.revokeObjectURL(url);
+      document.body.removeChild(exportMenu);
+    });
+    
+    // Remove menu when clicking outside
+    const removeMenu = (e: MouseEvent) => {
+      if (!exportMenu.contains(e.target as Node)) {
+        document.body.removeChild(exportMenu);
+        document.removeEventListener('click', removeMenu);
+      }
+    };
+    
+    setTimeout(() => {
+      document.addEventListener('click', removeMenu);
+    }, 100);
+  };
+
+  const exportReportSimple = () => {
+    if (!findings || !summary) return;
+    
     const report = `
 SMART CONTRACT SECURITY AUDIT REPORT
 Generated: ${timestamp.toLocaleString()}
@@ -321,7 +479,7 @@ END OF REPORT
                     {summary && (
                       <button
                         onClick={exportReport}
-                        className="p-1.5 hover:bg-gray-100 rounded-md transition-colors"
+                        className="relative p-1.5 hover:bg-gray-100 rounded-md transition-colors"
                         title="Export report"
                       >
                         <Download className="h-4 w-4 text-gray-600" />

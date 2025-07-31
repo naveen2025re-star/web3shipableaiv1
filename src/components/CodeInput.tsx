@@ -262,6 +262,10 @@ export default function CodeInput({ onSubmit, isLoading }: CodeInputProps) {
                 <span>Drag & drop or click to upload</span>
               </div>
             )}
+            <div className="flex items-center">
+              <Sparkles className="h-4 w-4 mr-1 text-purple-500" />
+              <span>AI-powered analysis</span>
+            </div>
           </div>
           <div className="flex items-center space-x-2">
             <kbd className="px-2 py-1 bg-gray-100 rounded-md text-xs font-mono">⌘</kbd>

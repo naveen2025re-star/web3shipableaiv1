@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, MessageSquare, Settings, LogOut, User, Trash2, Edit3 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Plus, MessageSquare, Settings, LogOut, User, Trash2, Edit3, ArrowLeft, ChevronDown, FolderOpen } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../lib/supabase';
 import { ChatSession } from '../hooks/useChatSessions';
+import { Project } from '../hooks/useProjects';
 
 interface SidebarProps {
   currentSessionId: string | null;
@@ -11,6 +12,9 @@ interface SidebarProps {
   onNewChat: () => void;
   onDeleteSession: (sessionId: string) => void;
   onUpdateSessionTitle: (sessionId: string, title: string) => void;
+  projects: Project[];
+  currentProject: Project | null;
+  onProjectSelect: (project: Project) => void;
 }
 
 export default function Sidebar({ 
@@ -19,11 +23,16 @@ export default function Sidebar({
   onSessionSelect, 
   onNewChat,
   onDeleteSession,
-  onUpdateSessionTitle
+  onUpdateSessionTitle,
+  projects,
+  currentProject,
+  onProjectSelect
 }: SidebarProps) {
   const { user, signOut } = useAuth();
+  const navigate = useNavigate();
   const [editingSession, setEditingSession] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
+  const [showProjectDropdown, setShowProjectDropdown] = useState(false);
 
   const deleteSession = (sessionId: string) => {
     onDeleteSession(sessionId);
@@ -56,6 +65,19 @@ export default function Sidebar({
     }
   };
 
+  const getLanguageColor = (language: string) => {
+    const colors: { [key: string]: string } = {
+      'Solidity': 'bg-blue-100 text-blue-800',
+      'Vyper': 'bg-green-100 text-green-800',
+      'Rust': 'bg-orange-100 text-orange-800',
+      'Cairo': 'bg-purple-100 text-purple-800',
+      'Move': 'bg-pink-100 text-pink-800',
+      'JavaScript': 'bg-yellow-100 text-yellow-800',
+      'TypeScript': 'bg-indigo-100 text-indigo-800',
+    };
+    return colors[language] || 'bg-gray-100 text-gray-800';
+  };
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
@@ -74,10 +96,80 @@ export default function Sidebar({
     <div className="w-64 bg-gray-900 text-white flex flex-col h-full relative">
       {/* Header */}
       <div className="p-4 border-b border-gray-700">
-        {/* Project info at top */}
-        <div className="mb-3 text-xs text-gray-400">
-          Current Project
+        {/* Back to Dashboard */}
+        <button
+          onClick={() => navigate('/dashboard')}
+          className="flex items-center space-x-2 text-gray-300 hover:text-white mb-4 text-sm transition-colors"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          <span>Back to Dashboard</span>
+        </button>
+
+        {/* Current Project Display */}
+        <div className="relative mb-4">
+          <div
+            onClick={() => setShowProjectDropdown(!showProjectDropdown)}
+            className="flex items-center justify-between p-3 bg-gray-800 rounded-lg cursor-pointer hover:bg-gray-700 transition-colors"
+          >
+            <div className="flex items-center space-x-3 min-w-0">
+              <FolderOpen className="h-4 w-4 text-gray-400 flex-shrink-0" />
+              <div className="min-w-0">
+                {currentProject ? (
+                  <>
+                    <p className="text-sm font-medium text-white truncate">
+                      {currentProject.name}
+                    </p>
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium mt-1 ${getLanguageColor(currentProject.contract_language)}`}>
+                      {currentProject.contract_language}
+                    </span>
+                  </>
+                ) : (
+                  <p className="text-sm text-gray-400">No project selected</p>
+                )}
+              </div>
+            </div>
+            <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${showProjectDropdown ? 'rotate-180' : ''}`} />
+          </div>
+
+          {/* Project Dropdown */}
+          {showProjectDropdown && (
+            <div className="absolute top-full left-0 right-0 mt-1 bg-gray-800 border border-gray-700 rounded-lg shadow-xl z-50 max-h-60 overflow-y-auto">
+              {projects.map((project) => (
+                <button
+                  key={project.id}
+                  onClick={() => {
+                    onProjectSelect(project);
+                    setShowProjectDropdown(false);
+                  }}
+                  className={`w-full text-left p-3 hover:bg-gray-700 transition-colors border-b border-gray-700 last:border-b-0 ${
+                    currentProject?.id === project.id ? 'bg-gray-700' : ''
+                  }`}
+                >
+                  <p className="text-sm font-medium text-white truncate">
+                    {project.name}
+                  </p>
+                  <div className="flex items-center space-x-2 mt-1">
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${getLanguageColor(project.contract_language)}`}>
+                      {project.contract_language}
+                    </span>
+                  </div>
+                </button>
+              ))}
+              <button
+                onClick={() => {
+                  navigate('/dashboard');
+                  setShowProjectDropdown(false);
+                }}
+                className="w-full text-left p-3 hover:bg-gray-700 transition-colors text-blue-400 border-t border-gray-600"
+              >
+                <Plus className="h-4 w-4 inline mr-2" />
+                Manage Projects
+              </button>
+            </div>
+          )}
         </div>
+
+        {/* New Chat Button */}
         <button
           onClick={onNewChat}
           className="w-full flex items-center justify-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg transition-colors font-medium"
@@ -189,5 +281,13 @@ export default function Sidebar({
         </div>
       </div>
     </div>
+
+    {/* Backdrop for dropdown */}
+    {showProjectDropdown && (
+      <div
+        className="fixed inset-0 z-40"
+        onClick={() => setShowProjectDropdown(false)}
+      />
+    )}
   );
 }

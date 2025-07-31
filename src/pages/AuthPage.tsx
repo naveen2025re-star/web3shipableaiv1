@@ -31,7 +31,7 @@ export default function AuthPage() {
       if (result.error) {
         setError(result.error.message);
       } else {
-        navigate('/app');
+        navigate('/dashboard');
       }
     } catch (err) {
       setError('An unexpected error occurred');

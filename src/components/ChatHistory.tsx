@@ -75,7 +75,7 @@ export default function ChatHistory({ messages, onStartNewAudit }: ChatHistoryPr
             {/* CTA Button */}
             <button
               onClick={onStartNewAudit}
-              className="group inline-flex items-center px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-2xl hover:from-blue-700 hover:to-purple-700 transition-all duration-300 font-bold text-lg shadow-2xl hover:shadow-3xl transform hover:-translate-y-1 mb-8"
+              className="group inline-flex items-center px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-2xl hover:from-blue-700 hover:to-purple-700 transition-all duration-300 font-bold text-lg shadow-2xl hover:shadow-3xl transform hover:-translate-y-1 mb-8 animate-pulse hover:animate-none"
             >
               <Shield className="h-6 w-6 mr-3 group-hover:scale-110 transition-transform" />
               Start Your First Audit
@@ -115,6 +115,20 @@ export default function ChatHistory({ messages, onStartNewAudit }: ChatHistoryPr
                   Complete security audits in under 15 seconds. Perfect for CI/CD integration and rapid development
                 </p>
               </div>
+            </div>
+            
+            {/* Quick Tips */}
+            <div className="mt-8 p-6 bg-gradient-to-r from-blue-50 to-purple-50 rounded-2xl border border-blue-200">
+              <h4 className="font-bold text-blue-900 mb-3 flex items-center">
+                <Shield className="h-5 w-5 mr-2" />
+                Quick Tips for Better Audits
+              </h4>
+              <ul className="text-sm text-blue-800 space-y-2">
+                <li>• Include contract descriptions for more targeted analysis</li>
+                <li>• Upload multiple files for comprehensive project audits</li>
+                <li>• Export detailed reports in JSON or text format</li>
+                <li>• Use project organization to track audit history</li>
+              </ul>
             </div>
             
             {/* Supported Languages */}
