@@ -96,8 +96,13 @@ export default function CodeInput({ onSubmit, isLoading }: CodeInputProps) {
     handleSubmit({ preventDefault: () => {} } as React.FormEvent, repoDetails);
   };
 
-  const handleGithubFilesSelected = (content: string, repoDetails: { owner: string; repo: string }) => {
+  const handleGithubFilesSelected = (files: { path: string; content: string }[], repoDetails: { owner: string; repo: string }) => {
     setShowGithubModal(false);
+    
+    // Combine all file contents into a single string for analysis
+    const content = files.map(file => 
+      `// File: ${file.path}\n${file.content}`
+    ).join('\n\n' + '='.repeat(80) + '\n\n');
     
     // Submit the file content for analysis
     onSubmit(content, '', repoDetails);

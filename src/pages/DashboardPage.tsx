@@ -109,16 +109,27 @@ export default function DashboardPage() {
     setShowGithubIntegration(false);
   };
   
-  const handleGithubFilesSelected = async (content: string, repoDetails: { owner: string; repo: string }) => {
+  const handleGithubFilesSelected = async (files: { path: string; content: string }[], repoDetails: { owner: string; repo: string }) => {
     setIsCreatingFromGithub(true);
     
     try {
+      // Combine all file contents into a single string
+      const content = files.map(file => 
+        `// File: ${file.path}\n${file.content}`
+      ).join('\n\n' + '='.repeat(80) + '\n\n');
+      
       // Determine the contract language based on file extensions in content
       let contractLanguage = 'Solidity';
-      if (content.includes('.js') || content.includes('JavaScript')) contractLanguage = 'JavaScript';
-      else if (content.includes('.ts') || content.includes('TypeScript')) contractLanguage = 'TypeScript';
-      else if (content.includes('.rs') || content.includes('Rust')) contractLanguage = 'Rust';
-      else if (content.includes('.py') || content.includes('Python')) contractLanguage = 'Python';
+      
+      // Check file extensions from the files array
+      const fileExtensions = files.map(file => file.path.toLowerCase());
+      if (fileExtensions.some(path => path.endsWith('.js'))) contractLanguage = 'JavaScript';
+      else if (fileExtensions.some(path => path.endsWith('.ts'))) contractLanguage = 'TypeScript';
+      else if (fileExtensions.some(path => path.endsWith('.rs'))) contractLanguage = 'Rust';
+      else if (fileExtensions.some(path => path.endsWith('.py'))) contractLanguage = 'Python';
+      else if (fileExtensions.some(path => path.endsWith('.vy'))) contractLanguage = 'Vyper';
+      else if (fileExtensions.some(path => path.endsWith('.cairo'))) contractLanguage = 'Cairo';
+      else if (fileExtensions.some(path => path.endsWith('.move'))) contractLanguage = 'Move';
       
       const projectName = `${repoDetails.repo} (GitHub Files)`;
       
@@ -622,16 +633,12 @@ export default function DashboardPage() {
                 owner={selectedRepoForBrowsing.owner.login}
                 repo={selectedRepoForBrowsing.name}
                 onFilesSelected={(files) => {
-                  const content = files.map(file => 
-                    `// File: ${file.path}\n${file.content}`
-                  ).join('\n\n' + '='.repeat(80) + '\n\n');
-                  
                   const repoDetails = {
                     owner: selectedRepoForBrowsing.owner.login,
                     repo: selectedRepoForBrowsing.name
                   };
                   
-                  handleGithubFilesSelected(content, repoDetails);
+                  handleGithubFilesSelected(files, repoDetails);
                 }}
                 onCancel={handleCancelFileBrowser}
               />
