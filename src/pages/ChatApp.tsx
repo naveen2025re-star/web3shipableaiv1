@@ -58,7 +58,7 @@ export default function ChatApp() {
           
           // Trigger file analysis
           setTimeout(() => {
-            handleAudit(analysisData.content, `Analyzing selected files from: ${analysisData.repoDetails.owner}/${analysisData.repoDetails.repo}`);
+            handleAudit(analysisData.content, `Analyzing selected files from: ${analysisData.repoDetails.owner}/${analysisData.repoDetails.repo}`, analysisData.repoDetails);
           }, 1000);
         }
       } catch (error) {
