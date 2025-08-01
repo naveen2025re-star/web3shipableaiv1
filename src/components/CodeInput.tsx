@@ -13,7 +13,6 @@ export default function CodeInput({ onSubmit, isLoading }: CodeInputProps) {
     name: string;
     content: string;
     repoDetails?: { owner: string; repo: string };
-    repoDetails?: { owner: string; repo: string };
   }>>([]);
   const [isDragOver, setIsDragOver] = useState(false);
   const [showGithubModal, setShowGithubModal] = useState(false);
@@ -328,7 +327,7 @@ export default function CodeInput({ onSubmit, isLoading }: CodeInputProps) {
             <div className="flex items-center">
               <Shield className="h-4 w-4 mr-1 text-green-500" />
               <span>Enterprise-grade security</span>
-            )}
+            </div>
             <div className="flex items-center">
               <Github className="h-4 w-4 mr-1 text-gray-500" />
               <span>GitHub integration</span>
