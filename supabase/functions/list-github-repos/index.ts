@@ -316,8 +316,23 @@ async function handleListFiles(req: Request, url: URL) {
     });
 
     if (!githubResponse.ok) {
+      let errorMessage = "Failed to fetch repository contents";
+      
+      if (githubResponse.status === 401) {
+        errorMessage = "Invalid GitHub Personal Access Token. Please check your token and ensure it hasn't expired.";
+      } else if (githubResponse.status === 403) {
+        const rateLimitRemaining = githubResponse.headers.get('X-RateLimit-Remaining');
+        if (rateLimitRemaining === '0') {
+          errorMessage = "GitHub API rate limit exceeded. Please wait before trying again.";
+        } else {
+          errorMessage = "Access denied. Your GitHub token may not have sufficient permissions for this repository.";
+        }
+      } else if (githubResponse.status === 404) {
+        errorMessage = "Repository or path not found. This could mean: the repository doesn't exist, it's private and your token lacks access, or the path is incorrect.";
+      }
+      
       return new Response(
-        JSON.stringify({ error: `Failed to fetch repository contents: ${githubResponse.status}` }),
+        JSON.stringify({ error: errorMessage }),
         {
           status: githubResponse.status,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -479,8 +494,23 @@ async function handleGetFileContent(req: Request, url: URL) {
     });
 
     if (!githubResponse.ok) {
+      let errorMessage = "Failed to fetch file content";
+      
+      if (githubResponse.status === 401) {
+        errorMessage = "Invalid GitHub Personal Access Token. Please check your token and ensure it hasn't expired.";
+      } else if (githubResponse.status === 403) {
+        const rateLimitRemaining = githubResponse.headers.get('X-RateLimit-Remaining');
+        if (rateLimitRemaining === '0') {
+          errorMessage = "GitHub API rate limit exceeded. Please wait before trying again.";
+        } else {
+          errorMessage = "Access denied. Your GitHub token may not have sufficient permissions for this file.";
+        }
+      } else if (githubResponse.status === 404) {
+        errorMessage = "File not found. This could mean: the file doesn't exist, the repository is private and your token lacks access, or the file path is incorrect.";
+      }
+      
       return new Response(
-        JSON.stringify({ error: `Failed to fetch file content: ${githubResponse.status}` }),
+        JSON.stringify({ error: errorMessage }),
         {
           status: githubResponse.status,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
