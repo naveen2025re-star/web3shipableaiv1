@@ -175,38 +175,6 @@ export default function CodeInput({ onSubmit, isLoading }: CodeInputProps) {
         </p>
       </div>
 
-      {/* GitHub Repository Selection */}
-      {selectedRepo && (
-        <div className="mb-6 p-4 bg-gradient-to-r from-gray-50 to-blue-50/30 rounded-2xl border border-blue-200">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="bg-gray-900 p-2 rounded-lg">
-                <Github className="h-4 w-4 text-white" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-900">Selected Repository</p>
-                <p className="text-sm text-gray-600">{selectedRepo.full_name}</p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={handleGithubScan}
-                disabled={isLoading}
-                className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-colors font-medium text-sm"
-              >
-                Scan Repository
-              </button>
-              <button
-                onClick={() => setSelectedRepo(null)}
-                className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
-              >
-                <X className="h-4 w-4 text-gray-600" />
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       <form onSubmit={handleSubmit}>
         <div 
           className={`relative bg-white border-2 rounded-3xl shadow-xl transition-all duration-300 ${
