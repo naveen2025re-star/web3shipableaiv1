@@ -19,7 +19,7 @@ interface Repository {
 
 interface GithubIntegrationProps {
   onFullRepositorySelect?: (repo: Repository) => void;
-  onFilesSelected?: (content: string, repoDetails: { owner: string; repo: string }) => void;
+  onFilesSelected?: (files: { path: string; content: string }[], repoDetails: { owner: string; repo: string }) => void;
   showRepositoryList?: boolean;
 }
 
@@ -162,14 +162,9 @@ export default function GithubIntegration({
   const handleFilesSelected = (files: { path: string; content: string }[]) => {
     if (!selectedRepoForFiles) return;
 
-    // Create a comprehensive analysis prompt
-    const fileContents = files.map(file => 
-      `// File: ${file.path}\n${file.content}`
-    ).join('\n\n' + '='.repeat(80) + '\n\n');
-
-    // Call the onFilesSelected with the file content
+    // Call the onFilesSelected with the files array and repo details
     if (onFilesSelected) {
-      onFilesSelected(fileContents, selectedRepoForFiles);
+      onFilesSelected(files, selectedRepoForFiles);
     }
     
     setShowFileSelector(false);
