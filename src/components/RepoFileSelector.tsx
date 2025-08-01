@@ -113,7 +113,15 @@ const RepoFileSelector: React.FC<RepoFileSelectorProps> = ({
         const errorData = await response.json();
         errorMessage = errorData.error || errorMessage;
       } catch {
-        errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+        if (response.status === 404) {
+          errorMessage = `File not found: ${filePath}. The file may have been moved, deleted, or you may lack access permissions.`;
+        } else if (response.status === 403) {
+          errorMessage = `Access forbidden to ${filePath}. Check your GitHub token permissions.`;
+        } else if (response.status === 401) {
+          errorMessage = `Authentication failed when accessing ${filePath}. Please check your GitHub token.`;
+        } else {
+          errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+        }
       }
       throw new Error(errorMessage);
     }
@@ -223,7 +231,17 @@ const RepoFileSelector: React.FC<RepoFileSelectorProps> = ({
       <div className="text-center py-12">
         <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md mx-auto">
           <h3 className="text-lg font-semibold text-red-600 mb-2">Error Loading Files</h3>
-          <p className="text-gray-600 mb-4">{error}</p>
+          <div className="text-gray-600 mb-4 text-left">
+            {error.split('\n').map((line, index) => (
+              <div key={index} className={index === 0 ? 'font-medium mb-2' : 'text-sm'}>
+                {line.startsWith('•') ? (
+                  <div className="ml-2">{line}</div>
+                ) : (
+                  line
+                )}
+              </div>
+            ))}
+          </div>
           <button
             onClick={() => fetchFiles(currentPath)}
             className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
