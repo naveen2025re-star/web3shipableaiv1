@@ -137,7 +137,7 @@ export default function CodeInput({ onSubmit, isLoading }: CodeInputProps) {
       </div>
 
       {/* GitHub Repository Selection */}
-      {selectedRepo && (
+      {showFileManager && (
         <div className="mb-6 p-4 bg-gradient-to-r from-gray-50 to-blue-50/30 rounded-2xl border border-blue-200">
           <div className="p-4 bg-gradient-to-r from-gray-50 to-blue-50/30 rounded-2xl border border-blue-200">
             <div className="flex items-center justify-between">
@@ -298,7 +298,7 @@ export default function CodeInput({ onSubmit, isLoading }: CodeInputProps) {
               <Shield className="h-4 w-4 mr-1 text-green-500" />
               <span>Enterprise-grade security</span>
             </div>
-            {uploadedFiles.length === 0 && !selectedRepo && (
+            {uploadedFiles.length === 0 && (
               <div className="flex items-center">
                 <Upload className="h-4 w-4 mr-1 text-blue-500" />
                 <span>Drag & drop or click to upload</span>

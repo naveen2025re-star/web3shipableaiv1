@@ -1,0 +1,345 @@
+import React, { useState, useEffect } from 'react';
+import { Upload, File, Trash2, Download, Eye, Calendar, FileText, Code, AlertCircle, CheckCircle } from 'lucide-react';
+import { supabase } from '../lib/supabase';
+import { useAuth } from '../contexts/AuthContext';
+
+interface UploadedFile {
+  id: string;
+  name: string;
+  size: number;
+  created_at: string;
+  file_path: string;
+  content_type: string;
+}
+
+interface FileManagerProps {
+  onFileSelected: (fileName: string, content: string) => void;
+  onClose: () => void;
+}
+
+export default function FileManager({ onFileSelected, onClose }: FileManagerProps) {
+  const { user } = useAuth();
+  const [files, setFiles] = useState<UploadedFile[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (user) {
+      loadFiles();
+    }
+  }, [user]);
+
+  const loadFiles = async () => {
+    if (!user) return;
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      // List files from storage
+      const { data: storageFiles, error: storageError } = await supabase.storage
+        .from('contract-files')
+        .list(`${user.id}/`, {
+          limit: 100,
+          offset: 0,
+          sortBy: { column: 'created_at', order: 'desc' }
+        });
+
+      if (storageError) {
+        throw storageError;
+      }
+
+      // Format files for display
+      const formattedFiles: UploadedFile[] = (storageFiles || [])
+        .filter(file => file.name !== '.emptyFolderPlaceholder')
+        .map(file => ({
+          id: file.id || file.name,
+          name: file.name,
+          size: file.metadata?.size || 0,
+          created_at: file.created_at || new Date().toISOString(),
+          file_path: `${user.id}/${file.name}`,
+          content_type: file.metadata?.mimetype || 'text/plain'
+        }));
+
+      setFiles(formattedFiles);
+    } catch (err) {
+      console.error('Error loading files:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load files');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleFileUpload = async (uploadFiles: FileList) => {
+    if (!user || uploadFiles.length === 0) return;
+
+    setUploading(true);
+    setError(null);
+
+    try {
+      const uploadPromises = Array.from(uploadFiles).map(async (file) => {
+        // Validate file type
+        const allowedTypes = [
+          'text/plain',
+          'application/javascript',
+          'text/javascript',
+          'application/typescript',
+          'text/x-solidity',
+          'text/x-python',
+          'text/x-rust',
+          'application/json'
+        ];
+
+        const fileExtension = file.name.split('.').pop()?.toLowerCase();
+        const allowedExtensions = ['sol', 'vy', 'rs', 'js', 'ts', 'jsx', 'tsx', 'py', 'cairo', 'move', 'json', 'txt'];
+
+        if (!allowedExtensions.includes(fileExtension || '')) {
+          throw new Error(`File type not supported: ${file.name}`);
+        }
+
+        // Upload to Supabase Storage
+        const filePath = `${user.id}/${file.name}`;
+        const { error: uploadError } = await supabase.storage
+          .from('contract-files')
+          .upload(filePath, file, {
+            cacheControl: '3600',
+            upsert: true
+          });
+
+        if (uploadError) {
+          throw uploadError;
+        }
+
+        return file.name;
+      });
+
+      await Promise.all(uploadPromises);
+      await loadFiles(); // Refresh file list
+    } catch (err) {
+      console.error('Error uploading files:', err);
+      setError(err instanceof Error ? err.message : 'Failed to upload files');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleFileSelect = async (file: UploadedFile) => {
+    if (!user) return;
+
+    try {
+      setSelectedFile(file.id);
+      setError(null);
+
+      // Download file content from Supabase Storage
+      const { data, error } = await supabase.storage
+        .from('contract-files')
+        .download(file.file_path);
+
+      if (error) {
+        throw error;
+      }
+
+      // Convert blob to text
+      const content = await data.text();
+      onFileSelected(file.name, content);
+    } catch (err) {
+      console.error('Error downloading file:', err);
+      setError(err instanceof Error ? err.message : 'Failed to download file');
+      setSelectedFile(null);
+    }
+  };
+
+  const handleFileDelete = async (file: UploadedFile) => {
+    if (!user) return;
+
+    try {
+      setError(null);
+
+      const { error } = await supabase.storage
+        .from('contract-files')
+        .remove([file.file_path]);
+
+      if (error) {
+        throw error;
+      }
+
+      await loadFiles(); // Refresh file list
+    } catch (err) {
+      console.error('Error deleting file:', err);
+      setError(err instanceof Error ? err.message : 'Failed to delete file');
+    }
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString([], { 
+      year: 'numeric', 
+      month: 'short', 
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const getFileIcon = (fileName: string) => {
+    const extension = fileName.split('.').pop()?.toLowerCase();
+    const codeExtensions = ['sol', 'vy', 'rs', 'js', 'ts', 'jsx', 'tsx', 'py', 'cairo', 'move'];
+    
+    if (codeExtensions.includes(extension || '')) {
+      return <Code className="h-5 w-5 text-green-500" />;
+    }
+    return <FileText className="h-5 w-5 text-gray-500" />;
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Upload Section */}
+      <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-400 transition-colors">
+        <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+        <h3 className="text-lg font-medium text-gray-900 mb-2">Upload Smart Contract Files</h3>
+        <p className="text-gray-600 mb-4">
+          Drag and drop files here, or click to select files
+        </p>
+        <input
+          type="file"
+          multiple
+          accept=".sol,.vy,.rs,.js,.ts,.jsx,.tsx,.py,.cairo,.move,.json,.txt"
+          onChange={(e) => e.target.files && handleFileUpload(e.target.files)}
+          className="hidden"
+          id="file-upload"
+          disabled={uploading}
+        />
+        <label
+          htmlFor="file-upload"
+          className={`inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white ${
+            uploading 
+              ? 'bg-gray-400 cursor-not-allowed' 
+              : 'bg-blue-600 hover:bg-blue-700 cursor-pointer'
+          } transition-colors`}
+        >
+          {uploading ? (
+            <>
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+              Uploading...
+            </>
+          ) : (
+            <>
+              <Upload className="h-4 w-4 mr-2" />
+              Select Files
+            </>
+          )}
+        </label>
+        <p className="text-xs text-gray-500 mt-2">
+          Supported: .sol, .vy, .rs, .js, .ts, .py, .cairo, .move, .json, .txt
+        </p>
+      </div>
+
+      {/* Error Display */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center">
+          <AlertCircle className="h-5 w-5 text-red-500 mr-3" />
+          <span className="text-red-700">{error}</span>
+        </div>
+      )}
+
+      {/* Files List */}
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-medium text-gray-900">Your Files</h3>
+          <span className="text-sm text-gray-500">{files.length} files</span>
+        </div>
+
+        {loading ? (
+          <div className="flex items-center justify-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <span className="ml-3 text-gray-600">Loading files...</span>
+          </div>
+        ) : files.length === 0 ? (
+          <div className="text-center py-8 text-gray-500">
+            <File className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+            <p>No files uploaded yet</p>
+            <p className="text-sm">Upload some smart contract files to get started</p>
+          </div>
+        ) : (
+          <div className="space-y-2 max-h-96 overflow-y-auto">
+            {files.map((file) => (
+              <div
+                key={file.id}
+                className={`flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors ${
+                  selectedFile === file.id ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
+                }`}
+              >
+                <div className="flex items-center space-x-3 flex-1 min-w-0">
+                  {getFileIcon(file.name)}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 truncate">
+                      {file.name}
+                    </p>
+                    <div className="flex items-center space-x-4 text-xs text-gray-500">
+                      <span>{formatFileSize(file.size)}</span>
+                      <span className="flex items-center">
+                        <Calendar className="h-3 w-3 mr-1" />
+                        {formatDate(file.created_at)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => handleFileSelect(file)}
+                    disabled={selectedFile === file.id}
+                    className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                      selectedFile === file.id
+                        ? 'bg-green-100 text-green-800 cursor-not-allowed'
+                        : 'bg-blue-100 text-blue-800 hover:bg-blue-200'
+                    }`}
+                  >
+                    {selectedFile === file.id ? (
+                      <>
+                        <CheckCircle className="h-3 w-3 mr-1 inline" />
+                        Selected
+                      </>
+                    ) : (
+                      <>
+                        <Eye className="h-3 w-3 mr-1 inline" />
+                        Select
+                      </>
+                    )}
+                  </button>
+                  <button
+                    onClick={() => handleFileDelete(file)}
+                    className="p-1 text-red-600 hover:bg-red-50 rounded transition-colors"
+                    title="Delete file"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Action Buttons */}
+      <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+        <button
+          onClick={onClose}
+          className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}

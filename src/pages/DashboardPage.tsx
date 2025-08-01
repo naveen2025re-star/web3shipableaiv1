@@ -18,14 +18,11 @@ import {
   Filter,
   Grid,
   List,
-  Github,
   X
 } from 'lucide-react';
 import { useProjects, Project } from '../hooks/useProjects';
 import { useAuth } from '../contexts/AuthContext';
 import ProjectModal from '../components/ProjectModal';
-import GithubIntegration from '../components/GithubIntegration';
-import RepoFileSelector from '../components/RepoFileSelector';
 
 export default function DashboardPage() {
   const navigate = useNavigate();
@@ -46,10 +43,6 @@ export default function DashboardPage() {
   const [filterLanguage, setFilterLanguage] = useState('');
   const [filterBlockchain, setFilterBlockchain] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [showGithubIntegration, setShowGithubIntegration] = useState(false);
-  const [isCreatingFromGithub, setIsCreatingFromGithub] = useState(false);
-  const [showRepoFileBrowser, setShowRepoFileBrowser] = useState(false);
-  const [selectedRepoForBrowsing, setSelectedRepoForBrowsing] = useState<any>(null);
 
   const handleCreateProject = () => {
     setProjectModalMode('create');
@@ -100,69 +93,6 @@ export default function DashboardPage() {
     setCurrentProject(project);
     localStorage.setItem('currentProject', JSON.stringify(project));
     navigate('/app');
-  };
-
-  const handleGithubRepositorySelect = async (repo: any) => {
-    // Show file browser for the selected repository
-    setSelectedRepoForBrowsing(repo);
-    setShowRepoFileBrowser(true);
-    setShowGithubIntegration(false);
-  };
-  
-  const handleGithubFilesSelected = async (files: { path: string; content: string }[], repoDetails: { owner: string; repo: string }) => {
-    setIsCreatingFromGithub(true);
-    
-    try {
-      // Combine all file contents into a single string
-      const content = files.map(file => 
-        `// File: ${file.path}\n${file.content}`
-      ).join('\n\n' + '='.repeat(80) + '\n\n');
-      
-      // Determine the contract language based on file extensions in content
-      let contractLanguage = 'Solidity';
-      
-      // Check file extensions from the files array
-      const fileExtensions = files.map(file => file.path.toLowerCase());
-      if (fileExtensions.some(path => path.endsWith('.js'))) contractLanguage = 'JavaScript';
-      else if (fileExtensions.some(path => path.endsWith('.ts'))) contractLanguage = 'TypeScript';
-      else if (fileExtensions.some(path => path.endsWith('.rs'))) contractLanguage = 'Rust';
-      else if (fileExtensions.some(path => path.endsWith('.py'))) contractLanguage = 'Python';
-      else if (fileExtensions.some(path => path.endsWith('.vy'))) contractLanguage = 'Vyper';
-      else if (fileExtensions.some(path => path.endsWith('.cairo'))) contractLanguage = 'Cairo';
-      else if (fileExtensions.some(path => path.endsWith('.move'))) contractLanguage = 'Move';
-      
-      const projectName = `${repoDetails.repo} (GitHub Files)`;
-      
-      // Create project from selected files
-      const newProject = await createProject(projectName, contractLanguage, 'Ethereum');
-      
-      if (newProject) {
-        // Set as current project and navigate to chat
-        setCurrentProject(newProject);
-        
-        // Store file content for immediate analysis
-        localStorage.setItem('pendingFileAnalysis', JSON.stringify({
-          content: content,
-          repoDetails: repoDetails,
-          projectId: newProject.id
-        }));
-        
-        navigate('/app');
-      }
-    } catch (error) {
-      console.error('Error creating project from GitHub files:', error);
-      alert('Failed to create project from selected files');
-    } finally {
-      setIsCreatingFromGithub(false);
-      setShowGithubIntegration(false);
-      setShowRepoFileBrowser(false);
-      setSelectedRepoForBrowsing(null);
-    }
-  };
-
-  const handleCancelFileBrowser = () => {
-    setShowRepoFileBrowser(false);
-    setSelectedRepoForBrowsing(null);
   };
 
   const getLanguageColor = (language: string) => {
@@ -391,54 +321,8 @@ export default function DashboardPage() {
                 <Plus className="h-5 w-5 mr-2" />
                 New Project
               </button>
-              
-              <button
-                onClick={() => setShowGithubIntegration(!showGithubIntegration)}
-                className="inline-flex items-center px-6 py-3 bg-gray-900 text-white rounded-xl hover:bg-gray-800 transition-all duration-200 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
-              >
-                <Github className="h-5 w-5 mr-2" />
-                GitHub
-              </button>
             </div>
           </div>
-
-          {/* GitHub Integration Section */}
-          {showGithubIntegration && (
-            <div className="mb-8">
-              <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
-                <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center space-x-3">
-                    <div className="bg-gray-900 p-2 rounded-lg">
-                      <Github className="h-5 w-5 text-white" />
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-900">GitHub Integration</h3>
-                      <p className="text-sm text-gray-600">Import and scan repositories directly</p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => setShowGithubIntegration(false)}
-                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                  >
-                    <X className="h-5 w-5 text-gray-500" />
-                  </button>
-                </div>
-                
-                {isCreatingFromGithub && (
-                  <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-center space-x-2">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                    <span className="text-blue-700 text-sm">Creating project from repository...</span>
-                  </div>
-                )}
-                
-                <GithubIntegration 
-                  onFullRepositorySelect={handleGithubRepositorySelect}
-                  onFilesSelected={handleGithubFilesSelected}
-                  showRepositoryList={true} 
-                />
-              </div>
-            </div>
-          )}
 
           {/* Projects Grid/List */}
           {filteredProjects.length === 0 ? (
@@ -588,60 +472,6 @@ export default function DashboardPage() {
               >
                 Delete Project
               </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Repository File Browser Modal */}
-      {showRepoFileBrowser && selectedRepoForBrowsing && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl max-w-6xl w-full max-h-[90vh] flex flex-col">
-            {/* Header */}
-            <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <div className="flex items-center space-x-3">
-                <div className="bg-gray-900 p-2 rounded-lg">
-                  <Github className="h-5 w-5 text-white" />
-                </div>
-                <div>
-                  <h3 className="text-xl font-semibold text-gray-900">
-                    Browse Repository Files
-                  </h3>
-                  <p className="text-sm text-gray-600">
-                    {selectedRepoForBrowsing.full_name}
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={handleCancelFileBrowser}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <X className="h-5 w-5 text-gray-500" />
-              </button>
-            </div>
-
-            {/* File Browser Content */}
-            <div className="flex-1 p-6 overflow-hidden">
-              {isCreatingFromGithub && (
-                <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-center space-x-2">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                  <span className="text-blue-700 text-sm">Creating project from selected files...</span>
-                </div>
-              )}
-              
-              <RepoFileSelector
-                owner={selectedRepoForBrowsing.owner.login}
-                repo={selectedRepoForBrowsing.name}
-                onFilesSelected={(files) => {
-                  const repoDetails = {
-                    owner: selectedRepoForBrowsing.owner.login,
-                    repo: selectedRepoForBrowsing.name
-                  };
-                  
-                  handleGithubFilesSelected(files, repoDetails);
-                }}
-                onCancel={handleCancelFileBrowser}
-              />
             </div>
           </div>
         </div>

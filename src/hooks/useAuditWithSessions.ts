@@ -275,7 +275,6 @@ export function useAuditWithSessions() {
   const performAudit = async (
     code: string,
     description: string,
-    repoDetails: { owner: string; repo: string } | undefined,
     currentProject: Project,
     currentSessionId: string,
     messages: Message[],
@@ -289,18 +288,8 @@ export function useAuditWithSessions() {
     // Create user message with code or repo info
     let userContent = '';
     
-    if (repoDetails) {
-      userContent = `**GitHub Repository Scan:**\n\`${repoDetails.owner}/${repoDetails.repo}\``;
-      if (description) {
-        userContent += `\n\n**Description:** ${description}`;
-      }
-      if (code) {
-        userContent += `\n\n**Additional Code:**\n\`\`\`\n${code}\n\`\`\``;
-      }
-    } else {
-      const codeDisplay = `**Smart Contract Code:**\n\`\`\`solidity\n${code}\n\`\`\``;
-      userContent = `${description ? `**Contract Description:** ${description}\n\n` : ''}${codeDisplay}`;
-    }
+    const codeDisplay = `**Smart Contract Code:**\n\`\`\`solidity\n${code}\n\`\`\``;
+    userContent = `${description ? `**Contract Description:** ${description}\n\n` : ''}${codeDisplay}`;
     
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -314,9 +303,7 @@ export function useAuditWithSessions() {
 
     // Update session title if this is the first message
     if (messages.length === 0) {
-      const title = repoDetails 
-        ? `${repoDetails.owner}/${repoDetails.repo} Audit`
-        : description || 'Smart Contract Audit';
+      const title = description || 'Smart Contract Audit';
       await updateSessionTitle(currentSessionId, title);
     }
     
@@ -331,7 +318,7 @@ export function useAuditWithSessions() {
       console.log('Making audit request to edge function...');
       
       // Validate input before making request
-      if (!code?.trim() && !repoDetails) {
+      if (!code?.trim()) {
         throw new Error('Please provide code to audit or select a GitHub repository');
       }
 
@@ -344,7 +331,6 @@ export function useAuditWithSessions() {
         body: JSON.stringify({
           code,
           description,
-          githubRepo: repoDetails,
           projectContext: {
             contractLanguage: currentProject.contract_language,
             targetBlockchain: currentProject.target_blockchain,
