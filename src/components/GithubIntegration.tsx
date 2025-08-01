@@ -18,13 +18,11 @@ interface Repository {
 }
 
 interface GithubIntegrationProps {
-  onFullRepositorySelect?: (repo: Repository) => void;
-  onFilesSelected?: (content: string, repoDetails: { owner: string; repo: string }) => void;
+  onFilesSelected?: (files: { path: string; content: string }[], repoDetails: { owner: string; repo: string }) => void;
   showRepositoryList?: boolean;
 }
 
 export default function GithubIntegration({ 
-  onFullRepositorySelect,
   onFilesSelected,
   showRepositoryList = true 
 }: GithubIntegrationProps) {
@@ -142,16 +140,8 @@ export default function GithubIntegration({
   const handleRepositorySelect = (repo: Repository) => {
     setSelectedRepo(repo);
     setShowCreateProject(true);
-    if (onFullRepositorySelect) {
-      onFullRepositorySelect(repo);
-    }
-  };
-
-  const handleCreateProjectFromRepo = () => {
-    if (selectedRepo && onFullRepositorySelect) {
-      onFullRepositorySelect(selectedRepo);
-      setShowCreateProject(false);
-    }
+    // For CodeInput usage, we want to show file selector instead
+    handleSelectFiles(repo);
   };
 
   const handleSelectFiles = (repo: Repository) => {
@@ -162,14 +152,9 @@ export default function GithubIntegration({
   const handleFilesSelected = (files: { path: string; content: string }[]) => {
     if (!selectedRepoForFiles) return;
 
-    // Create a comprehensive analysis prompt
-    const fileContents = files.map(file => 
-      `// File: ${file.path}\n${file.content}`
-    ).join('\n\n' + '='.repeat(80) + '\n\n');
-
-    // Call the onFilesSelected with the file content
+    // Call the onFilesSelected with the files array and repo details
     if (onFilesSelected) {
-      onFilesSelected(fileContents, selectedRepoForFiles);
+      onFilesSelected(files, selectedRepoForFiles);
     }
     
     setShowFileSelector(false);
@@ -317,21 +302,11 @@ export default function GithubIntegration({
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleRepositorySelect(repo);
+                          handleSelectFiles(repo);
                         }}
                         className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
                       >
-                        Browse Files
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleSelectFiles(repo);
-                        }}
-                        className="px-3 py-1.5 text-sm bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors flex items-center gap-1"
-                      >
-                        <FileText className="w-4 h-4" />
-                        Quick Select
+                        Select Files
                       </button>
                     </div>
                   </div>
@@ -342,33 +317,6 @@ export default function GithubIntegration({
         </div>
       )}
 
-      {/* Selected Repository Info */}
-      {selectedRepo && (
-        <div className="mt-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="bg-blue-100 p-2 rounded-lg">
-                <Github className="h-5 w-5 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-blue-900">Selected Repository</p>
-                <p className="text-sm text-blue-700">{selectedRepo.full_name}</p>
-                {selectedRepo.description && (
-                  <p className="text-xs text-blue-600 mt-1">{selectedRepo.description}</p>
-                )}
-              </div>
-            </div>
-            {showCreateProject && (
-              <button
-                onClick={handleCreateProjectFromRepo}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm"
-              >
-                Browse Files & Create Project
-              </button>
-            )}
-          </div>
-        </div>
-      )}
 
       {showFileSelector && selectedRepoForFiles && pat && (
         <RepoFileSelector

@@ -1,446 +1,406 @@
-import { Project } from './useProjects';
-import { useAuth } from '../contexts/AuthContext';
+import React, { useState } from 'react';
+import { Shield, Plus, X, File, Send, XCircle, Upload, Sparkles, Zap, Github, Code } from 'lucide-react';
+import GithubIntegration from './GithubIntegration';
 
-interface Finding {
-  vulnerabilityName: string;
-  severity: 'Critical' | 'High' | 'Medium' | 'Low' | 'Informational';
-  impact: string;
-  vulnerableCode: string;
-  explanation: string;
-  proofOfConcept: string;
-  remediation: string;
-  references?: string;
-  cveId?: string;
-  swcId?: string;
+interface CodeInputProps {
+  onSubmit: (code: string, description: string, repoDetails?: { owner: string; repo: string }) => void;
+  isLoading: boolean;
 }
 
-interface AuditSummary {
-  totalFindings: number;
-  criticalCount: number;
-  highCount: number;
-  mediumCount: number;
-  lowCount: number;
-  informationalCount: number;
-  riskScore: number;
-  overallRisk: 'Critical' | 'High' | 'Medium' | 'Low' | 'Minimal';
-  contractName?: string;
-  additionalObservations?: string[];
-  conclusion?: string;
-}
+export default function CodeInput({ onSubmit, isLoading }: CodeInputProps) {
+  const [input, setInput] = useState('');
+  const [uploadedFiles, setUploadedFiles] = useState<Array<{
+    name: string;
+    content: string;
+    repoDetails?: { owner: string; repo: string };
+  }>>([]);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [showGithubModal, setShowGithubModal] = useState(false);
 
-interface Message {
-  id: string;
-  type: 'user' | 'assistant';
-  content: string;
-  findings?: Finding[];
-  summary?: AuditSummary;
-  timestamp: Date;
-}
-
-export function useAuditWithSessions() {
-  const { session } = useAuth();
-
-  // Helper function to extract code blocks
-  const extractCodeBlocks = (text: string): string[] => {
-    const codeBlockRegex = /```[\w]*\n?([\s\S]*?)\n?```/g;
-    const codeBlocks: string[] = [];
-    let match;
+  const handleSubmit = (e: React.FormEvent, repoDetails?: { owner: string; repo: string }) => {
+    e.preventDefault();
     
-    while ((match = codeBlockRegex.exec(text)) !== null) {
-      codeBlocks.push(match[1].trim());
-    }
+    // Determine final code and description
+    let finalCode = '';
+    let description = '';
+    let finalRepoDetails = repoDetails;
     
-    return codeBlocks;
-  };
-
-  // Helper function to clean code snippets
-  const cleanCodeSnippet = (code: string): string => {
-    if (!code || code.trim().length === 0) return code;
-    
-    const lines = code.split('\n');
-    const cleanedLines = lines.filter(line => {
-      const trimmedLine = line.trim();
+    if (uploadedFiles.length > 0) {
+      // Combine uploaded files content
+      finalCode = uploadedFiles.map(file => {
+        // Add file path header for clarity
+        const fileHeader = file.repoDetails 
+          ? `// File: ${file.name} (from ${file.repoDetails.owner}/${file.repoDetails.repo})`
+          : `// File: ${file.name}`;
+        return `${fileHeader}\n${file.content}`;
+      }).join('\n\n' + '='.repeat(80) + '\n\n');
       
-      // Skip empty lines at start/end but keep internal empty lines for structure
-      if (trimmedLine === '') return true;
+      // Use text input as description when files are present
+      if (!session || !session.access_token) {
+        description = input.trim();
+      }
       
-      // Remove markdown list prefixes and clean up line formatting
-      let cleanLine = trimmedLine;
+    } else if (input.trim()) {
+      // No files uploaded, check if input contains code patterns
+      const hasCodePattern = /pragma solidity|contract\s+\w+|function\s+\w+|mapping\s*\(/.test(input);
       
-      // Remove common markdown list prefixes (-, *, +, numbers)
-      cleanLine = cleanLine.replace(/^[-*+]\s*/, '');
-      cleanLine = cleanLine.replace(/^\d+\.\s*/, '');
-      cleanLine = cleanLine.replace(/^[-*+]\s*/, ''); // Double check for nested prefixes
-      
-      // Update trimmedLine to use cleaned version for further checks
-      const finalTrimmedLine = cleanLine.trim();
-      
-      // Remove function declarations
-      if (finalTrimmedLine.startsWith('function ') && finalTrimmedLine.includes('(')) return false;
-      
-      // Remove standalone closing braces (but keep braces that are part of code blocks)
-      if (finalTrimmedLine === '}' || /^}\s*\/\//.test(finalTrimmedLine)) return false;
-      
-      // Remove descriptive comments
-      if (finalTrimmedLine.startsWith('// Function:') || 
-          finalTrimmedLine.startsWith('// Start of') || 
-          finalTrimmedLine.startsWith('// End of') || 
-          finalTrimmedLine.startsWith('// Vulnerable function') ||
-          finalTrimmedLine.startsWith('// This function') ||
-          finalTrimmedLine.startsWith('// The following')) return false;
-      
-      // Return the cleaned line instead of original
-      return cleanLine;
-    }).map(line => {
-      // Clean each line that passes the filter
-      let cleanLine = line.trim();
-      
-      // Remove markdown list prefixes
-      cleanLine = cleanLine.replace(/^[-*+]\s*/, '');
-      cleanLine = cleanLine.replace(/^\d+\.\s*/, '');
-      cleanLine = cleanLine.replace(/^[-*+]\s*/, ''); // Double check
-      
-      // Preserve original indentation structure but use cleaned content
-      const originalIndent = line.match(/^\s*/)?.[0] || '';
-      return originalIndent + cleanLine;
-    });
-    
-    // Filter out any lines that became empty after cleaning
-    const finalLines = cleanedLines.filter(line => {
-      const trimmed = line.trim();
-      return trimmed !== '' && trimmed !== '-' && trimmed !== '*' && trimmed !== '+';
-    });
-    
-    // Remove leading and trailing empty lines
-    while (finalLines.length > 0 && finalLines[0].trim() === '') {
-      finalLines.shift();
-    }
-    while (finalLines.length > 0 && finalLines[finalLines.length - 1].trim() === '') {
-      finalLines.pop();
-    }
-    
-    return finalLines.join('\n');
-  };
-
-  // Helper function to extract severity from text
-  const extractSeverity = (text: string): Finding['severity'] => {
-    const severityMatch = text.match(/(?:severity|risk\s*level|priority):\s*([^\n]+)/i);
-    if (severityMatch) {
-      const severityText = severityMatch[1].toLowerCase().trim();
-      if (severityText.includes('critical')) return 'Critical';
-      if (severityText.includes('high')) return 'High';
-      if (severityText.includes('medium')) return 'Medium';
-      if (severityText.includes('low')) return 'Low';
-      if (severityText.includes('info')) return 'Informational';
-    }
-
-    const textLower = text.toLowerCase();
-    if (textLower.includes('- **severity**: critical') || textLower.includes('**severity**: critical')) return 'Critical';
-    if (textLower.includes('- **severity**: high') || textLower.includes('**severity**: high')) return 'High';
-    if (textLower.includes('- **severity**: medium') || textLower.includes('**severity**: medium')) return 'Medium';
-    if (textLower.includes('- **severity**: low') || textLower.includes('**severity**: low')) return 'Low';
-    if (textLower.includes('- **severity**: informational') || textLower.includes('**severity**: informational')) return 'Informational';
-
-    return 'Medium';
-  };
-
-  // Helper function to extract bullet point content
-  const extractBulletContent = (text: string, bulletName: string): string => {
-    const regex = new RegExp(`-\\s*\\*\\*${bulletName}\\*\\*:?\\s*([\\s\\S]*?)(?=\\n-\\s*\\*\\*|\\n###|$)`, 'i');
-    const match = text.match(regex);
-    return match ? match[1].trim() : '';
-  };
-
-  const parseAuditResponse = (response: string): { content: string; summary: AuditSummary; findings: Finding[] } => {
-    let cleanContent = response.trim();
-    const findings: Finding[] = [];
-
-    const contractMatch = cleanContent.match(/####\s*Contract:\s*`([^`]+)`/);
-    const contractName = contractMatch ? contractMatch[1] : 'Smart Contract';
-
-    const vulnerabilityMatches = cleanContent.match(/###\s*Vulnerability\s*\d*:?\s*([^\n]+)([\s\S]*?)(?=###\s*(?:Vulnerability|Additional|Conclusion)|$)/gi);
-
-    if (vulnerabilityMatches) {
-      vulnerabilityMatches.forEach((vulnSection) => {
-        const nameMatch = vulnSection.match(/###\s*Vulnerability\s*\d*:?\s*([^\n]+)/i);
-        const vulnerabilityName = nameMatch ? nameMatch[1].trim() : 'Security Finding';
-
-        const severity = extractSeverity(vulnSection);
-        const codeBlocks = extractCodeBlocks(vulnSection);
-        const vulnerableCode = codeBlocks.length > 0 ? cleanCodeSnippet(codeBlocks[0]) : '';
-
-        const explanation = extractBulletContent(vulnSection, 'Detailed Explanation') || 
-                          extractBulletContent(vulnSection, 'Technical Analysis') ||
-                          extractBulletContent(vulnSection, 'Description');
-
-        let proofOfConcept = extractBulletContent(vulnSection, 'Proof of Concept') ||
-                             extractBulletContent(vulnSection, 'Evidence & Justification') ||
-                             extractBulletContent(vulnSection, 'Attack Scenario');
-
-        const remediation = extractBulletContent(vulnSection, 'Recommended Remediation') ||
-                          extractBulletContent(vulnSection, 'Remediation') ||
-                          extractBulletContent(vulnSection, 'Fix');
-
-        const references = extractBulletContent(vulnSection, 'References') ||
-                         extractBulletContent(vulnSection, 'Links');
-
-        let impact = extractBulletContent(vulnSection, 'Impact') ||
-                    extractBulletContent(vulnSection, 'Risk') ||
-                    extractBulletContent(vulnSection, 'Consequence');
-
-        if (!impact && explanation) {
-          const sentences = explanation.split(/[.!?]+/);
-          impact = sentences[0] ? sentences[0].trim() + '.' : 'Security vulnerability identified';
-        }
-
-        if (codeBlocks.length > 1) {
-          const pocCode = cleanCodeSnippet(codeBlocks.slice(1).join('\n\n'));
-          if (pocCode && !proofOfConcept.includes('```')) {
-            proofOfConcept += pocCode ? `\n\n\`\`\`solidity\n${cleanCodeSnippet(pocCode)}\n\`\`\`` : '';
-          }
-        }
-
-        findings.push({
-          vulnerabilityName,
-          severity,
-          impact: impact || 'Security vulnerability that requires attention',
-          vulnerableCode,
-          explanation: explanation || 'Technical analysis required',
-          proofOfConcept: proofOfConcept || '',
-          remediation: remediation || 'Remediation steps needed',
-          references: references || ''
-        });
-      });
-    }
-
-    const additionalObservations: string[] = [];
-    const observationsMatch = cleanContent.match(/###\s*Additional\s*Observations([\s\S]*?)(?=###|$)/i);
-    if (observationsMatch) {
-      const observationsText = observationsMatch[1];
-      const bulletPoints = observationsText.match(/^\s*[-*]\s*\*\*([^*]+)\*\*:\s*([^\n]+)/gm);
-      if (bulletPoints) {
-        bulletPoints.forEach(point => {
-          const cleanPoint = point.trim();
-          if (cleanPoint) additionalObservations.push(cleanPoint);
-        });
+      if (hasCodePattern) {
+        // Input contains code
+        finalCode = input.trim();
+      } else {
+        // Input is description only
+        description = input.trim();
       }
     }
-
-    const conclusionMatch = cleanContent.match(/###\s*Conclusion([\s\S]*?)$/i);
-    const conclusion = conclusionMatch ? conclusionMatch[1].trim() : '';
-
-    if (findings.length === 0 && cleanContent.length > 50) {
-      const severity = extractSeverity(cleanContent);
-      const codeBlocks = extractCodeBlocks(cleanContent);
+    
+    // Only submit if we have code to analyze
+    if (finalCode.trim()) {
+      onSubmit(finalCode, description, repoDetails);
+      setInput('');
+      setUploadedFiles([]);
+      setSelectedRepo(null);
       
-      findings.push({
-        vulnerabilityName: 'Smart Contract Security Analysis',
-        severity,
-        impact: 'Comprehensive security assessment completed',
-        vulnerableCode: cleanCodeSnippet(codeBlocks.join('\n\n')),
-        explanation: cleanContent.replace(/```[\s\S]*?```/g, '').trim(),
-        proofOfConcept: '',
-        remediation: 'Review the analysis and implement recommended security measures',
-        references: ''
-      });
+      // Reset textarea height
+      const textarea = document.querySelector('textarea');
+      if (textarea) {
+        textarea.style.height = 'auto';
+        textarea.style.height = '60px';
+      }
+    } else if (repoDetails) {
+      // GitHub repo scan without additional code
+      onSubmit('', description, repoDetails);
+      setInput('');
+      setUploadedFiles([]);
+      setSelectedRepo(null);
+      
+      // Reset textarea height
+      const textarea = document.querySelector('textarea');
+      if (textarea) {
+        textarea.style.height = 'auto';
+        textarea.style.height = '60px';
+      }
     }
+  };
 
-    const summary: AuditSummary = {
-      totalFindings: findings.length,
-      criticalCount: findings.filter(f => f.severity === 'Critical').length,
-      highCount: findings.filter(f => f.severity === 'High').length,
-      mediumCount: findings.filter(f => f.severity === 'Medium').length,
-      lowCount: findings.filter(f => f.severity === 'Low').length,
-      informationalCount: findings.filter(f => f.severity === 'Informational').length,
-      riskScore: findings.reduce((score, f) => {
-        const weights = { Critical: 10, High: 7, Medium: 4, Low: 2, Informational: 1 };
-        return score + weights[f.severity];
-      }, 0),
-      overallRisk: 'Minimal',
-      contractName,
-      additionalObservations,
-      conclusion
+  const handleGithubRepoSelect = (repo: Repository) => {
+    setSelectedRepo(repo);
+    setShowGithubModal(false);
+    
+    // Automatically trigger scan when repo is selected
+    const repoDetails = {
+      owner: repo.owner.login,
+      repo: repo.name,
     };
-
-    if (summary.criticalCount > 0) summary.overallRisk = 'Critical';
-    else if (summary.highCount > 0) summary.overallRisk = 'High';
-    else if (summary.mediumCount > 2) summary.overallRisk = 'High';
-    else if (summary.mediumCount > 0 || summary.lowCount > 3) summary.overallRisk = 'Medium';
-    else if (summary.lowCount > 0) summary.overallRisk = 'Low';
-
-    return {
-      content: cleanContent,
-      summary,
-      findings
-    };
+    handleSubmit({ preventDefault: () => {} } as React.FormEvent, repoDetails);
   };
 
-  const performAudit = async (
-    code: string,
-    description: string,
-    repoDetails: { owner: string; repo: string } | undefined,
-    currentProject: Project,
-    currentSessionId: string,
-    messages: Message[],
-    setMessages: React.Dispatch<React.SetStateAction<Message[]>>,
-    setIsLoading: React.Dispatch<React.SetStateAction<boolean>>,
-    saveMessage: (message: Message) => Promise<void>,
-    updateSessionTitle: (sessionId: string, title: string) => Promise<void>
-  ) => {
-    setIsLoading(true);
+  const handleGithubFilesSelected = (content: string, repoDetails: { owner: string; repo: string }) => {
+    setShowGithubModal(false);
     
-    // Create user message with code or repo info
-    let userContent = '';
-    
-    if (repoDetails) {
-      userContent = `**GitHub Repository Scan:**\n\`${repoDetails.owner}/${repoDetails.repo}\``;
-      if (description) {
-        userContent += `\n\n**Description:** ${description}`;
-      }
-      if (code) {
-        userContent += `\n\n**Additional Code:**\n\`\`\`\n${code}\n\`\`\``;
-      }
-    } else {
-      const codeDisplay = `**Smart Contract Code:**\n\`\`\`solidity\n${code}\n\`\`\``;
-      userContent = `${description ? `**Contract Description:** ${description}\n\n` : ''}${codeDisplay}`;
-    }
-    
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      type: 'user',
-      content: userContent,
-      timestamp: new Date()
-    };
-    
-    setMessages(prev => [...prev, userMessage]);
-    await saveMessage(userMessage);
+    // Submit the file content for analysis
+    onSubmit(content, '', repoDetails);
+  };
 
-    // Update session title if this is the first message
-    if (messages.length === 0) {
-      const title = repoDetails 
-        ? `${repoDetails.owner}/${repoDetails.repo} Audit`
-        : description || 'Smart Contract Audit';
-      await updateSessionTitle(currentSessionId, title);
-    }
-    
-    try {
-      if (!session?.access_token) {
-        throw new Error('Authentication required. Please sign in again.');
-      }
-      
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      
-      if (!supabaseUrl) {
-        throw new Error('Supabase configuration is missing. Please check your environment variables.');
-      }
-      
-      console.log('Making audit request to edge function...');
-      
-      // Validate input before making request
-      if (!code?.trim() && !repoDetails) {
-        throw new Error('Please provide code to audit or select a GitHub repository');
-      }
-
-      const response = await fetch(`${supabaseUrl}/functions/v1/audit-contract`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          code,
-          description,
-          githubRepo: repoDetails,
-          projectContext: {
-            contractLanguage: currentProject.contract_language,
-            targetBlockchain: currentProject.target_blockchain,
-            projectName: currentProject.name
-          }
-        })
-      });
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Edge function error response:', {
-          status: response.status,
-          statusText: response.statusText,
-          error: errorText,
-          codeLength: code.length
-        });
-        
-        let errorData;
-        try {
-          errorData = JSON.parse(errorText);
-        } catch {
-          errorData = { error: 'Failed to parse error response' };
-        }
-        
-        // Create more user-friendly error messages
-        let userMessage = errorData.error || 'Failed to process audit request';
-        
-        if (errorData.suggestions && Array.isArray(errorData.suggestions)) {
-          userMessage += '\n\nSuggestions:\n' + errorData.suggestions.map(s => `• ${s}`).join('\n');
-        } else if (errorData.details) {
-          userMessage += `\n\nDetails: ${errorData.details}`;
-        }
-        
-        // Add specific guidance based on error type
-        if (response.status === 400) {
-          if (errorData.error?.includes('too large') || errorData.details?.includes('size')) {
-            userMessage += '\n\n💡 Try reducing the code size or splitting into smaller files.';
-          }
-        } else if (response.status === 503 || response.status >= 500) {
-          userMessage += '\n\n💡 This appears to be a temporary service issue. Please try again in a few minutes.';
-        }
-        
-        throw new Error(userMessage);
-      }
-      
-      const data = await response.json();
-      console.log('Received audit response', {
-        hasAudit: !!data.audit,
-        auditLength: data.audit?.length || 0,
-        metadata: data.metadata
-      });
-      
-      if (!data.audit) {
-        throw new Error('Invalid response format from audit service');
-      }
-      
-      const auditResult = data.audit || 'Unable to complete audit analysis.';
-      
-      const { content, summary, findings } = parseAuditResponse(auditResult);
-      
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        type: 'assistant',
-        content: content,
-        findings: findings,
-        summary: summary,
-        timestamp: new Date()
+  const handleGithubScan = () => {
+    if (selectedRepo) {
+      const repoDetails = {
+        owner: selectedRepo.owner.login,
+        repo: selectedRepo.name,
       };
-      
-      setMessages(prev => [...prev, assistantMessage]);
-      await saveMessage(assistantMessage);
-      
-    } catch (error) {
-      console.error('Audit error:', error);
-      
-      const errorMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        type: 'assistant',
-        content: `❌ **Audit Failed** - ${error instanceof Error ? error.message : 'Unknown error occurred'}. Please check your configuration and try again.`,
-        timestamp: new Date()
-      };
-      
-      setMessages(prev => [...prev, errorMessage]);
-      await saveMessage(errorMessage);
-    } finally {
-      setIsLoading(false);
+      handleSubmit({ preventDefault: () => {} } as React.FormEvent, repoDetails);
     }
   };
 
-  return {
-    performAudit,
+  const handleFileUpload = (files: FileList | File[]) => {
+    const fileArray = Array.from(files);
+    
+    fileArray.forEach(file => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const content = e.target?.result as string;
+        setUploadedFiles(prev => [...prev, { name: file.name, content }]);
+      };
+      reader.readAsText(file);
+    });
   };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      handleFileUpload(files);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      handleFileUpload(files);
+    }
+  };
+
+  const removeFile = (index: number) => {
+    setUploadedFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+      e.preventDefault();
+      handleSubmit(e as any);
+    }
+  };
+
+  const clearInput = () => {
+    setInput('');
+    const textarea = document.querySelector('textarea');
+    if (textarea) {
+      textarea.style.height = 'auto';
+      textarea.style.height = '60px';
+    }
+  };
+
+  return (
+    <div className="max-w-4xl mx-auto">
+      {/* Enhanced Header */}
+      <div className="text-center mb-6">
+        <div className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-100 to-purple-100 text-blue-800 rounded-full text-sm font-medium mb-4 border border-blue-200/50 shadow-sm">
+          <Sparkles className="h-4 w-4 mr-2" />
+          AI-Powered Security Analysis
+        </div>
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">
+          Upload Code or Scan Repository
+        </h2>
+        <p className="text-gray-600">
+          Upload files, paste code, or scan GitHub repositories with our advanced AI auditor
+        </p>
+      </div>
+
+      {/* GitHub Repository Selection */}
+      {selectedRepo && (
+        <div className="mb-6 p-4 bg-gradient-to-r from-gray-50 to-blue-50/30 rounded-2xl border border-blue-200">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="bg-gray-900 p-2 rounded-lg">
+                <Github className="h-4 w-4 text-white" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-900">Selected Repository</p>
+                <p className="text-sm text-gray-600">{selectedRepo.full_name}</p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={handleGithubScan}
+                disabled={isLoading}
+                className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-colors font-medium text-sm"
+              >
+                Scan Repository
+              </button>
+              <button
+                onClick={() => setSelectedRepo(null)}
+                className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
+              >
+                <X className="h-4 w-4 text-gray-600" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit}>
+        <div 
+          className={`relative bg-white border-2 rounded-3xl shadow-xl transition-all duration-300 ${
+            isDragOver 
+              ? 'border-blue-400 shadow-2xl bg-blue-50/30 scale-[1.02]' 
+              : 'border-gray-200 hover:border-blue-300 hover:shadow-2xl'
+          } ${isLoading ? 'opacity-75' : ''}`}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+        >
+          {/* Uploaded Files */}
+          {uploadedFiles.length > 0 && (
+            <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-blue-50/30 rounded-t-3xl">
+              <div className="flex items-center mb-2">
+                <File className="h-4 w-4 text-gray-600 mr-2" />
+                <span className="text-sm font-medium text-gray-700">
+                  {uploadedFiles.length} file{uploadedFiles.length > 1 ? 's' : ''} uploaded
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {uploadedFiles.map((file, index) => (
+                  <div key={index} className="inline-flex items-center bg-blue-100 text-blue-800 px-3 py-2 rounded-full text-sm font-medium shadow-sm hover:shadow-md transition-shadow">
+                    <File className="h-3 w-3 mr-1" />
+                    <span className="max-w-32 truncate">{file.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => removeFile(index)}
+                      className="ml-2 hover:bg-blue-200 rounded-full p-1 transition-colors"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Main Input Area */}
+          <div className="relative">
+            <textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={uploadedFiles.length > 0 
+                ? "💡 Describe your smart contract or add additional context for better analysis..." 
+                : "📝 Paste your smart contract code here or describe what you want to audit..."
+              }
+              className="w-full px-6 py-5 pr-28 border-none outline-none resize-none rounded-3xl text-gray-900 placeholder-gray-500 min-h-[80px] max-h-[300px] text-lg leading-relaxed"
+              style={{ 
+                height: 'auto',
+                minHeight: '80px'
+              }}
+              onInput={(e) => {
+                const target = e.target as HTMLTextAreaElement;
+                target.style.height = 'auto';
+                target.style.height = Math.min(target.scrollHeight, 300) + 'px';
+              }}
+              disabled={isLoading}
+            />
+
+            {/* Action Buttons */}
+            <div className="absolute right-3 bottom-3 flex items-center space-x-2">
+              {/* Clear Input Button */}
+              {input.trim() && (
+                <button
+                  type="button"
+                  onClick={clearInput}
+                  className="p-2.5 hover:bg-gray-100 rounded-xl cursor-pointer transition-all duration-200 hover:scale-110"
+                  title="Clear input"
+                >
+                  <XCircle className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                </button>
+              )}
+
+              {/* File Upload Button */}
+              <label className="p-2.5 hover:bg-blue-50 rounded-xl cursor-pointer transition-all duration-200 hover:scale-110 group">
+                <Upload className="h-5 w-5 text-gray-600 group-hover:text-blue-600" />
+                <input
+                  type="file"
+                  onChange={handleFileChange}
+                  accept=".sol,.vy,.rs,.js,.ts,.cairo,.move"
+                  multiple
+                  className="hidden"
+                  disabled={isLoading}
+                />
+              </label>
+
+              {/* GitHub Button */}
+              <button
+                type="button"
+                onClick={() => setShowGithubModal(true)}
+                className="p-2.5 hover:bg-gray-50 rounded-xl transition-all duration-200 hover:scale-110 group"
+                title="Scan GitHub Repository"
+              >
+                <Github className="h-5 w-5 text-gray-600 group-hover:text-gray-900" />
+              </button>
+
+              {/* Submit Button */}
+              <button
+                type="submit"
+                disabled={(!input.trim() && uploadedFiles.length === 0 && !selectedRepo) || isLoading}
+                className="group p-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed text-white rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-110 disabled:transform-none"
+              >
+                {isLoading ? (
+                  <div className="flex items-center">
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                    <Zap className="h-4 w-4" />
+                  </div>
+                ) : (
+                  <Send className="h-5 w-5 group-hover:translate-x-0.5 transition-transform" />
+                )}
+              </button>
+            </div>
+          </div>
+
+          {/* Drag & Drop Overlay */}
+          {isDragOver && (
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-50 to-purple-50 bg-opacity-95 border-2 border-dashed border-blue-400 rounded-3xl flex items-center justify-center backdrop-blur-sm">
+              <div className="text-center animate-pulse">
+                <div className="bg-blue-100 rounded-full p-4 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                  <Upload className="h-8 w-8 text-blue-600" />
+                </div>
+                <p className="text-blue-800 font-bold text-lg mb-2">Drop your smart contract files here</p>
+                <p className="text-blue-600 text-sm">Supports .sol, .vy, .rs, .cairo, .move and more</p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Helper Text */}
+        <div className="mt-4 flex items-center justify-between text-sm text-gray-500">
+          <div className="flex items-center space-x-6">
+            <div className="flex items-center">
+              <Shield className="h-4 w-4 mr-1 text-green-500" />
+              <span>Enterprise-grade security</span>
+            </div>
+            {uploadedFiles.length === 0 && !selectedRepo && (
+              <div className="flex items-center">
+                <Upload className="h-4 w-4 mr-1 text-blue-500" />
+                <span>Drag & drop or click to upload</span>
+              </div>
+            )}
+            <div className="flex items-center">
+              <Github className="h-4 w-4 mr-1 text-gray-500" />
+              <span>GitHub integration</span>
+            </div>
+            <div className="flex items-center">
+              <Sparkles className="h-4 w-4 mr-1 text-purple-500" />
+              <span>AI-powered analysis</span>
+            </div>
+          </div>
+          <div className="flex items-center space-x-2">
+            <kbd className="px-2 py-1 bg-gray-100 rounded-md text-xs font-mono">⌘</kbd>
+            <kbd className="px-2 py-1 bg-gray-100 rounded-md text-xs font-mono">Enter</kbd>
+            <span>to send</span>
+          </div>
+        </div>
+      </form>
+
+      {/* GitHub Integration Modal */}
+      {showGithubModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <h3 className="text-xl font-semibold text-gray-900">Select GitHub Repository</h3>
+              <button
+                onClick={() => setShowGithubModal(false)}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <X className="h-5 w-5 text-gray-500" />
+              </button>
+            </div>
+            <div className="p-6">
+              <GithubIntegration
+                onFullRepositorySelect={handleGithubRepoSelect}
+                onFilesSelected={handleGithubFilesSelected}
+                showRepositoryList={true}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
