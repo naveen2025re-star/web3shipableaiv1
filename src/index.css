@@ -2,73 +2,159 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 
 @layer base {
   html {
     font-family: 'Inter', system-ui, sans-serif;
+    background-color: #111827;
   }
   
   body {
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    background-color: #111827;
+    color: #ffffff;
   }
 
   /* Custom scrollbar styles */
   ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+    width: 8px;
+    height: 8px;
   }
 
   ::-webkit-scrollbar-track {
-    background: transparent;
+    background: #374151;
   }
 
   ::-webkit-scrollbar-thumb {
-    background: rgba(156, 163, 175, 0.3);
-    border-radius: 3px;
+    background: #6b7280;
+    border-radius: 4px;
     transition: background-color 0.2s ease;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: rgba(156, 163, 175, 0.6);
+    background: #9ca3af;
   }
 
   /* Dark theme scrollbar for sidebar */
   .dark-scrollbar::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.2);
+    background: #4b5563;
   }
 
   .dark-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.4);
+    background: #6b7280;
   }
 
   /* Thin scrollbar for chat messages */
   .thin-scrollbar::-webkit-scrollbar {
-    width: 4px;
+    width: 6px;
   }
 
   .thin-scrollbar::-webkit-scrollbar-thumb {
-    background: rgba(156, 163, 175, 0.2);
-    border-radius: 2px;
+    background: #4b5563;
+    border-radius: 3px;
   }
 
   .thin-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: rgba(156, 163, 175, 0.4);
+    background: #6b7280;
   }
 
   /* Firefox scrollbar */
   * {
     scrollbar-width: thin;
-    scrollbar-color: rgba(156, 163, 175, 0.3) transparent;
+    scrollbar-color: #6b7280 #374151;
   }
 
   .dark-scrollbar {
-    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+    scrollbar-color: #4b5563 #1f2937;
+  }
+
+  /* LISA-inspired animations */
+  .scan-pulse {
+    animation: scanPulse 2s ease-in-out infinite;
+  }
+
+  @keyframes scanPulse {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 1; }
+  }
+
+  .gradient-border {
+    background: linear-gradient(45deg, #14b8a6, #3b82f6, #8b5cf6);
+    background-size: 200% 200%;
+    animation: gradientShift 3s ease infinite;
+  }
+
+  @keyframes gradientShift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+
+  /* Glassmorphism effects */
+  .glass {
+    background: rgba(31, 41, 55, 0.8);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(75, 85, 99, 0.3);
+  }
+
+  .glass-light {
+    background: rgba(55, 65, 81, 0.6);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(107, 114, 128, 0.2);
   }
 }
 
 @layer utilities {
   .text-balance {
     text-wrap: balance;
+  }
+
+  /* LISA-inspired utility classes */
+  .severity-critical {
+    @apply bg-red-500 text-white;
+  }
+
+  .severity-high {
+    @apply bg-orange-500 text-white;
+  }
+
+  .severity-medium {
+    @apply bg-yellow-500 text-white;
+  }
+
+  .severity-low {
+    @apply bg-blue-500 text-white;
+  }
+
+  .severity-info {
+    @apply bg-gray-500 text-white;
+  }
+
+  /* Interactive elements */
+  .interactive-card {
+    @apply transition-all duration-200 hover:bg-gray-700 hover:border-gray-500 cursor-pointer;
+  }
+
+  .interactive-card:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  }
+
+  /* Status indicators */
+  .status-online {
+    @apply bg-green-400;
+  }
+
+  .status-analyzing {
+    @apply bg-yellow-400;
+  }
+
+  .status-error {
+    @apply bg-red-400;
+  }
+
+  .status-idle {
+    @apply bg-gray-400;
   }
 }
