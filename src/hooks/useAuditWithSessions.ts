@@ -1,4 +1,5 @@
 import { Project } from './useProjects';
+import { useAuth } from '../contexts/AuthContext';
 
 interface Finding {
   vulnerabilityName: string;
@@ -37,6 +38,8 @@ interface Message {
 }
 
 export function useAuditWithSessions() {
+  const { session } = useAuth();
+
   // Helper function to extract code blocks
   const extractCodeBlocks = (text: string): string[] => {
     const codeBlockRegex = /```[\w]*\n?([\s\S]*?)\n?```/g;
@@ -321,10 +324,13 @@ export function useAuditWithSessions() {
     }
     
     try {
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      if (!session?.access_token) {
+        throw new Error('Authentication required. Please sign in again.');
+      }
       
-      if (!supabaseUrl || !supabaseAnonKey) {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      
+      if (!supabaseUrl) {
         throw new Error('Supabase configuration is missing. Please check your environment variables.');
       }
       
@@ -338,7 +344,7 @@ export function useAuditWithSessions() {
       const response = await fetch(`${supabaseUrl}/functions/v1/audit-contract`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${supabaseAnonKey}`,
+          'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({

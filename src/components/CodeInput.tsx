@@ -1,19 +1,6 @@
 import React, { useState } from 'react';
-import { Shield, Plus, X, File, Send, XCircle, Upload, Sparkles, Zap, Github } from 'lucide-react';
+import { Shield, Plus, X, File, Send, XCircle, Upload, Sparkles, Zap, Github, Code } from 'lucide-react';
 import GithubIntegration from './GithubIntegration';
-
-interface Repository {
-  id: number;
-  name: string;
-  full_name: string;
-  owner: {
-    login: string;
-  };
-  description: string | null;
-  language: string | null;
-  private: boolean;
-  updated_at: string;
-}
 
 interface CodeInputProps {
   onSubmit: (code: string, description: string, repoDetails?: { owner: string; repo: string }) => void;
@@ -22,10 +9,13 @@ interface CodeInputProps {
 
 export default function CodeInput({ onSubmit, isLoading }: CodeInputProps) {
   const [input, setInput] = useState('');
-  const [uploadedFiles, setUploadedFiles] = useState<Array<{name: string, content: string}>>([]);
+  const [uploadedFiles, setUploadedFiles] = useState<Array<{
+    name: string;
+    content: string;
+    repoDetails?: { owner: string; repo: string };
+  }>>([]);
   const [isDragOver, setIsDragOver] = useState(false);
   const [showGithubModal, setShowGithubModal] = useState(false);
-  const [selectedRepo, setSelectedRepo] = useState<Repository | null>(null);
 
   const handleSubmit = (e: React.FormEvent, repoDetails?: { owner: string; repo: string }) => {
     e.preventDefault();
