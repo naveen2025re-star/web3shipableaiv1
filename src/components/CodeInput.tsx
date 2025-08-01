@@ -1,6 +1,19 @@
 import React, { useState } from 'react';
-import { Shield, Plus, X, File, Send, XCircle, Upload, Sparkles, Zap, Github, Code } from 'lucide-react';
+import { Shield, Plus, X, File, Send, XCircle, Upload, Sparkles, Zap, Github } from 'lucide-react';
 import GithubIntegration from './GithubIntegration';
+
+interface Repository {
+  id: number;
+  name: string;
+  full_name: string;
+  owner: {
+    login: string;
+  };
+  description: string | null;
+  language: string | null;
+  private: boolean;
+  updated_at: string;
+}
 
 interface CodeInputProps {
   onSubmit: (code: string, description: string, repoDetails?: { owner: string; repo: string }) => void;
@@ -9,42 +22,25 @@ interface CodeInputProps {
 
 export default function CodeInput({ onSubmit, isLoading }: CodeInputProps) {
   const [input, setInput] = useState('');
-  const [uploadedFiles, setUploadedFiles] = useState<Array<{
-    name: string;
-    content: string;
-    repoDetails?: { owner: string; repo: string };
-  }>>([]);
+  const [uploadedFiles, setUploadedFiles] = useState<Array<{name: string, content: string}>>([]);
   const [isDragOver, setIsDragOver] = useState(false);
   const [showGithubModal, setShowGithubModal] = useState(false);
+  const [selectedRepo, setSelectedRepo] = useState<Repository | null>(null);
+
   const handleSubmit = (e: React.FormEvent, repoDetails?: { owner: string; repo: string }) => {
     e.preventDefault();
     
     // Combine uploaded files content with manual input
     let finalCode = '';
     let description = '';
-    let finalRepoDetails = repoDetails;
     
     if (uploadedFiles.length > 0) {
-      // If files are uploaded, combine their content with file path headers
-      finalCode = uploadedFiles.map(file => {
-        // Add file path header for clarity
-        const fileHeader = file.repoDetails 
-          ? `// File: ${file.name}\n${file.content}`
-          : `// File: ${file.name}\n${file.content}`;
-        return fileHeader;
-      }).join('\n\n' + '='.repeat(80) + '\n\n');
+      // If files are uploaded, combine their content
+      finalCode = uploadedFiles.map(file => file.content).join('\n\n');
       
       // Use manual input as description if provided
       if (input.trim()) {
         description = input.trim();
-      }
-      
-      // Use repo details from first GitHub file if available
-      if (!finalRepoDetails) {
-        const githubFile = uploadedFiles.find(file => file.repoDetails);
-        if (githubFile) {
-          finalRepoDetails = githubFile.repoDetails;
-        }
       }
     } else if (input.trim()) {
       // No files uploaded, check if input contains code patterns
@@ -61,9 +57,10 @@ export default function CodeInput({ onSubmit, isLoading }: CodeInputProps) {
     
     // Only submit if we have code to analyze
     if (finalCode.trim()) {
-      onSubmit(finalCode, description, finalRepoDetails);
+      onSubmit(finalCode, description, repoDetails);
       setInput('');
       setUploadedFiles([]);
+      setSelectedRepo(null);
       
       // Reset textarea height
       const textarea = document.querySelector('textarea');
@@ -71,11 +68,12 @@ export default function CodeInput({ onSubmit, isLoading }: CodeInputProps) {
         textarea.style.height = 'auto';
         textarea.style.height = '60px';
       }
-    } else if (finalRepoDetails) {
+    } else if (repoDetails) {
       // GitHub repo scan without additional code
-      onSubmit('', description, finalRepoDetails);
+      onSubmit('', description, repoDetails);
       setInput('');
       setUploadedFiles([]);
+      setSelectedRepo(null);
       
       // Reset textarea height
       const textarea = document.querySelector('textarea');
@@ -86,17 +84,33 @@ export default function CodeInput({ onSubmit, isLoading }: CodeInputProps) {
     }
   };
 
-  const handleGithubFilesSelected = (files: { path: string; content: string }[], repoDetails: { owner: string; repo: string }) => {
+  const handleGithubRepoSelect = (repo: Repository) => {
+    setSelectedRepo(repo);
     setShowGithubModal(false);
     
-    // Add GitHub files to uploaded files state
-    const githubFiles = files.map(file => ({
-      name: file.path,
-      content: file.content,
-      repoDetails: repoDetails
-    }));
+    // Automatically trigger scan when repo is selected
+    const repoDetails = {
+      owner: repo.owner.login,
+      repo: repo.name,
+    };
+    handleSubmit({ preventDefault: () => {} } as React.FormEvent, repoDetails);
+  };
+
+  const handleGithubFilesSelected = (content: string, repoDetails: { owner: string; repo: string }) => {
+    setShowGithubModal(false);
     
-    setUploadedFiles(prev => [...prev, ...githubFiles]);
+    // Submit the file content for analysis
+    onSubmit(content, '', repoDetails);
+  };
+
+  const handleGithubScan = () => {
+    if (selectedRepo) {
+      const repoDetails = {
+        owner: selectedRepo.owner.login,
+        repo: selectedRepo.name,
+      };
+      handleSubmit({ preventDefault: () => {} } as React.FormEvent, repoDetails);
+    }
   };
 
   const handleFileUpload = (files: FileList | File[]) => {
@@ -174,6 +188,38 @@ export default function CodeInput({ onSubmit, isLoading }: CodeInputProps) {
         </p>
       </div>
 
+      {/* GitHub Repository Selection */}
+      {selectedRepo && (
+        <div className="mb-6 p-4 bg-gradient-to-r from-gray-50 to-blue-50/30 rounded-2xl border border-blue-200">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="bg-gray-900 p-2 rounded-lg">
+                <Github className="h-4 w-4 text-white" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-900">Selected Repository</p>
+                <p className="text-sm text-gray-600">{selectedRepo.full_name}</p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={handleGithubScan}
+                disabled={isLoading}
+                className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-colors font-medium text-sm"
+              >
+                Scan Repository
+              </button>
+              <button
+                onClick={() => setSelectedRepo(null)}
+                className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
+              >
+                <X className="h-4 w-4 text-gray-600" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <form onSubmit={handleSubmit}>
         <div 
           className={`relative bg-white border-2 rounded-3xl shadow-xl transition-all duration-300 ${
@@ -196,30 +242,13 @@ export default function CodeInput({ onSubmit, isLoading }: CodeInputProps) {
               </div>
               <div className="flex flex-wrap gap-2">
                 {uploadedFiles.map((file, index) => (
-                  <div key={index} className={`inline-flex items-center px-3 py-2 rounded-full text-sm font-medium shadow-sm hover:shadow-md transition-shadow ${
-                    file.repoDetails 
-                      ? 'bg-purple-100 text-purple-800' 
-                      : 'bg-blue-100 text-blue-800'
-                  }`}>
-                    {file.repoDetails ? (
-                      <Github className="h-3 w-3 mr-1" />
-                    ) : (
-                      <File className="h-3 w-3 mr-1" />
-                    )}
+                  <div key={index} className="inline-flex items-center bg-blue-100 text-blue-800 px-3 py-2 rounded-full text-sm font-medium shadow-sm hover:shadow-md transition-shadow">
+                    <File className="h-3 w-3 mr-1" />
                     <span className="max-w-32 truncate">{file.name}</span>
-                    {file.repoDetails && (
-                      <span className="ml-1 text-xs opacity-75">
-                        ({file.repoDetails.owner}/{file.repoDetails.repo})
-                      </span>
-                    )}
                     <button
                       type="button"
                       onClick={() => removeFile(index)}
-                      className={`ml-2 rounded-full p-1 transition-colors ${
-                        file.repoDetails 
-                          ? 'hover:bg-purple-200' 
-                          : 'hover:bg-blue-200'
-                      }`}
+                      className="ml-2 hover:bg-blue-200 rounded-full p-1 transition-colors"
                     >
                       <X className="h-3 w-3" />
                     </button>
@@ -236,7 +265,7 @@ export default function CodeInput({ onSubmit, isLoading }: CodeInputProps) {
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder={uploadedFiles.length > 0 
-                ? "💡 Add description or additional context for the uploaded files..." 
+                ? "💡 Describe your smart contract or add additional context for better analysis..." 
                 : "📝 Paste your smart contract code here or describe what you want to audit..."
               }
               className="w-full px-6 py-5 pr-28 border-none outline-none resize-none rounded-3xl text-gray-900 placeholder-gray-500 min-h-[80px] max-h-[300px] text-lg leading-relaxed"
@@ -292,7 +321,7 @@ export default function CodeInput({ onSubmit, isLoading }: CodeInputProps) {
               {/* Submit Button */}
               <button
                 type="submit"
-                disabled={(!input.trim() && uploadedFiles.length === 0) || isLoading}
+                disabled={(!input.trim() && uploadedFiles.length === 0 && !selectedRepo) || isLoading}
                 className="group p-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed text-white rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-110 disabled:transform-none"
               >
                 {isLoading ? (
@@ -328,6 +357,12 @@ export default function CodeInput({ onSubmit, isLoading }: CodeInputProps) {
               <Shield className="h-4 w-4 mr-1 text-green-500" />
               <span>Enterprise-grade security</span>
             </div>
+            {uploadedFiles.length === 0 && !selectedRepo && (
+              <div className="flex items-center">
+                <Upload className="h-4 w-4 mr-1 text-blue-500" />
+                <span>Drag & drop or click to upload</span>
+              </div>
+            )}
             <div className="flex items-center">
               <Github className="h-4 w-4 mr-1 text-gray-500" />
               <span>GitHub integration</span>
@@ -360,6 +395,7 @@ export default function CodeInput({ onSubmit, isLoading }: CodeInputProps) {
             </div>
             <div className="p-6">
               <GithubIntegration
+                onFullRepositorySelect={handleGithubRepoSelect}
                 onFilesSelected={handleGithubFilesSelected}
                 showRepositoryList={true}
               />
