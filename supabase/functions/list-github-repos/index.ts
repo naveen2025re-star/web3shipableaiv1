@@ -319,16 +319,16 @@ async function handleListFiles(req: Request, url: URL) {
       let errorMessage = "Failed to fetch repository contents";
       
       if (githubResponse.status === 401) {
-        errorMessage = "Invalid GitHub Personal Access Token. Please check your token and ensure it hasn't expired.";
+        errorMessage = "GitHub authentication failed. Please check your GitHub Personal Access Token (PAT) in your profile settings and ensure it hasn't expired.";
       } else if (githubResponse.status === 403) {
         const rateLimitRemaining = githubResponse.headers.get('X-RateLimit-Remaining');
         if (rateLimitRemaining === '0') {
           errorMessage = "GitHub API rate limit exceeded. Please wait before trying again.";
         } else {
-          errorMessage = "Access denied. Your GitHub token may not have sufficient permissions for this repository.";
+          errorMessage = "Access denied to repository. Please ensure your GitHub Personal Access Token (PAT) has the 'repo' scope enabled for private repositories, or 'public_repo' scope for public repositories. Check your token permissions at https://github.com/settings/tokens";
         }
       } else if (githubResponse.status === 404) {
-        errorMessage = "Repository or path not found. This could mean: the repository doesn't exist, it's private and your token lacks access, or the path is incorrect.";
+        errorMessage = "Repository or path not found. Common solutions: 1) Verify the repository name and owner are correct, 2) For private repositories, ensure your GitHub PAT has 'repo' scope enabled, 3) Check that the repository exists and you have access to it, 4) If recently created, wait a few minutes for GitHub to sync.";
       }
       
       return new Response(
@@ -497,16 +497,16 @@ async function handleGetFileContent(req: Request, url: URL) {
       let errorMessage = "Failed to fetch file content";
       
       if (githubResponse.status === 401) {
-        errorMessage = "Invalid GitHub Personal Access Token. Please check your token and ensure it hasn't expired.";
+        errorMessage = "GitHub authentication failed. Please verify your GitHub Personal Access Token (PAT) in your profile settings and ensure it's still valid.";
       } else if (githubResponse.status === 403) {
         const rateLimitRemaining = githubResponse.headers.get('X-RateLimit-Remaining');
         if (rateLimitRemaining === '0') {
           errorMessage = "GitHub API rate limit exceeded. Please wait before trying again.";
         } else {
-          errorMessage = "Access denied. Your GitHub token may not have sufficient permissions for this file.";
+          errorMessage = "Access denied to file. Your GitHub Personal Access Token (PAT) needs 'repo' scope for private repositories or 'public_repo' scope for public repositories. Update your token permissions at https://github.com/settings/tokens";
         }
       } else if (githubResponse.status === 404) {
-        errorMessage = "File not found. This could mean: the file doesn't exist, the repository is private and your token lacks access, or the file path is incorrect.";
+        errorMessage = "File not found. Please check: 1) The file path is correct, 2) The file exists in the repository, 3) For private repositories, your GitHub PAT has 'repo' scope, 4) You have read access to this repository.";
       }
       
       return new Response(
