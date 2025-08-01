@@ -38,6 +38,36 @@ export default function FileManager({ onFileSelected, onClose }: FileManagerProp
       setLoading(true);
       setError(null);
 
+      // Check if bucket exists, create if it doesn't
+      const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
+      
+      if (bucketsError) {
+        throw bucketsError;
+      }
+
+      const bucketExists = buckets?.some(bucket => bucket.name === 'contract-files');
+      
+      if (!bucketExists) {
+        const { error: createBucketError } = await supabase.storage.createBucket('contract-files', {
+          public: false,
+          allowedMimeTypes: [
+            'text/plain',
+            'application/javascript',
+            'text/javascript',
+            'application/typescript',
+            'text/x-solidity',
+            'text/x-python',
+            'text/x-rust',
+            'application/json'
+          ],
+          fileSizeLimit: 10485760 // 10MB
+        });
+
+        if (createBucketError) {
+          throw createBucketError;
+        }
+      }
+
       // List files from storage
       const { data: storageFiles, error: storageError } = await supabase.storage
         .from('contract-files')
@@ -79,6 +109,36 @@ export default function FileManager({ onFileSelected, onClose }: FileManagerProp
     setError(null);
 
     try {
+      // Ensure bucket exists before uploading
+      const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
+      
+      if (bucketsError) {
+        throw bucketsError;
+      }
+
+      const bucketExists = buckets?.some(bucket => bucket.name === 'contract-files');
+      
+      if (!bucketExists) {
+        const { error: createBucketError } = await supabase.storage.createBucket('contract-files', {
+          public: false,
+          allowedMimeTypes: [
+            'text/plain',
+            'application/javascript',
+            'text/javascript',
+            'application/typescript',
+            'text/x-solidity',
+            'text/x-python',
+            'text/x-rust',
+            'application/json'
+          ],
+          fileSizeLimit: 10485760 // 10MB
+        });
+
+        if (createBucketError) {
+          throw createBucketError;
+        }
+      }
+
       const uploadPromises = Array.from(uploadFiles).map(async (file) => {
         // Validate file type
         const allowedTypes = [
