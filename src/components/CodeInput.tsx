@@ -328,12 +328,6 @@ export default function CodeInput({ onSubmit, isLoading }: CodeInputProps) {
             <div className="flex items-center">
               <Shield className="h-4 w-4 mr-1 text-green-500" />
               <span>Enterprise-grade security</span>
-            </div>
-            {uploadedFiles.length === 0 && !selectedRepo && (
-              <div className="flex items-center">
-                <Upload className="h-4 w-4 mr-1 text-blue-500" />
-                <span>Drag & drop or click to upload</span>
-              </div>
             )}
             <div className="flex items-center">
               <Github className="h-4 w-4 mr-1 text-gray-500" />
