@@ -1,5 +1,37 @@
-const handleGithubFilesSelected = (files: FileWithContent[], repoDetails: RepoDetails) => {
+import React, { useState } from 'react';
+import { RepoFileSelector } from './RepoFileSelector';
+
+export interface FileWithContent {
+  path: string;
+  content: string;
+}
+
+export interface RepoDetails {
+  owner: string;
+  repo: string;
+}
+
+interface GithubIntegrationProps {
+  onFilesSelected: (files: FileWithContent[], repoDetails: RepoDetails) => void;
+  selectedRepoForBrowsing: any;
+  showFileBrowser: boolean;
+  onCancelFileBrowser: () => void;
+}
+
+const GithubIntegration: React.FC<GithubIntegrationProps> = ({
+  onFilesSelected,
+  selectedRepoForBrowsing,
+  showFileBrowser,
+  onCancelFileBrowser
+}) => {
+  const [loading] = useState(false);
+
+  const handleGithubFilesSelected = (files: FileWithContent[], repoDetails: RepoDetails) => {
     onFilesSelected(files, repoDetails);
+  };
+
+  const handleCancelFileBrowser = () => {
+    onCancelFileBrowser();
   };
 
   if (loading) {
@@ -28,3 +60,6 @@ const handleGithubFilesSelected = (files: FileWithContent[], repoDetails: RepoDe
       )}
     </div>
   );
+};
+
+export default GithubIntegration;
