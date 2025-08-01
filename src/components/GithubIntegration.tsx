@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { RepoFileSelector } from './RepoFileSelector';
+import RepoFileSelector from './RepoFileSelector';
 
 export interface FileWithContent {
   path: string;
