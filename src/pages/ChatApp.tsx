@@ -125,8 +125,6 @@ export default function ChatApp() {
     createNewSession();
   };
 
-  const handleAudit = async (code: string, description: string, repoDetails?: { owner: string; repo: string }) => {
-  }
   const handleAudit = async (code: string, description: string) => {
     if (!currentProject) {
       console.error('No current project available for audit');
