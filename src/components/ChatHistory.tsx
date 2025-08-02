@@ -180,18 +180,18 @@ export default function ChatHistory({ messages, onStartNewAudit }: ChatHistoryPr
           </div>
         </div>
       ) : (
-          <div className="space-y-8 pb-8">
-            {messages.map((message, index) => (
-              <div key={message.id} className="animate-slide-up" style={{ animationDelay: `${index * 0.1}s` }}>
-                <ChatMessage
-                  type={message.type}
-                  content={message.content}
-                  findings={message.findings}
-                  timestamp={message.timestamp}
-                />
-              </div>
-            ))}
-          </div>
+        <div className="space-y-8 pb-8 min-h-0">
+          {messages.map((message, index) => (
+            <div key={message.id} className="animate-slide-up" style={{ animationDelay: `${index * 0.1}s` }}>
+              <ChatMessage
+                type={message.type}
+                content={message.content}
+                findings={message.findings}
+                timestamp={message.timestamp}
+              />
+            </div>
+          ))}
+        </div>
       )}
     </div>
   );
