@@ -53,7 +53,7 @@ export default function ChatHistory({ messages, onStartNewAudit }: ChatHistoryPr
                 <div className="bg-gradient-to-r from-blue-100 to-indigo-100 rounded-xl p-2 w-fit mx-auto mb-2 group-hover:scale-110 transition-transform duration-200">
                   <Zap className="h-5 w-5 text-blue-600" />
                 </div>
-                <div className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent"><15s</div>
+                <div className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">&lt;15s</div>
                 <div className="text-xs text-gray-600 font-medium">Audit Time</div>
               </div>
               <div className="glass-effect rounded-xl p-4 shadow-lg border border-gray-200/50 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 group">
