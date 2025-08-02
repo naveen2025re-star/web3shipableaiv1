@@ -48,6 +48,12 @@ export default function FileManager({ onFileSelected, onClose }: FileManagerProp
         });
 
       if (storageError) {
+        if (storageError.message.includes('row-level security policy')) {
+          throw new Error('Storage access denied. Please ensure proper permissions are configured.');
+        }
+        if (storageError.message.includes('Bucket not found')) {
+          throw new Error('Storage bucket not found. Please ensure the "contract-files" bucket exists.');
+        }
         throw storageError;
       }
 
@@ -55,7 +61,7 @@ export default function FileManager({ onFileSelected, onClose }: FileManagerProp
       const formattedFiles: UploadedFile[] = (storageFiles || [])
         .filter(file => file.name !== '.emptyFolderPlaceholder')
         .map(file => ({
-          id: file.id || file.name,
+          id: file.id || `${user.id}/${file.name}`,
           name: file.name,
           size: file.metadata?.size || 0,
           created_at: file.created_at || new Date().toISOString(),
@@ -79,6 +85,19 @@ export default function FileManager({ onFileSelected, onClose }: FileManagerProp
     setError(null);
 
     try {
+      // First, test if we can access the bucket by trying to list files
+      const { error: testError } = await supabase.storage
+        .from('contract-files')
+        .list(`${user.id}/`, { limit: 1 });
+
+      if (testError && testError.message.includes('Bucket not found')) {
+        throw new Error('Storage bucket not configured. Please contact support.');
+      }
+
+      if (testError && testError.message.includes('row-level security policy')) {
+        throw new Error('Storage permissions not configured. Please ensure you have proper access rights.');
+      }
+
       const uploadPromises = Array.from(uploadFiles).map(async (file) => {
         // Validate file type
         const allowedTypes = [
@@ -100,15 +119,21 @@ export default function FileManager({ onFileSelected, onClose }: FileManagerProp
         }
 
         // Upload to Supabase Storage
-        const filePath = `${user.id}/${file.name}`;
+        const filePath = `${user.id}/${Date.now()}-${file.name}`;
         const { error: uploadError } = await supabase.storage
           .from('contract-files')
           .upload(filePath, file, {
             cacheControl: '3600',
-            upsert: true
+            upsert: false
           });
 
         if (uploadError) {
+          if (uploadError.message.includes('row-level security policy')) {
+            throw new Error(`Upload failed: Storage permissions not configured properly. File: ${file.name}`);
+          }
+          if (uploadError.message.includes('Duplicate')) {
+            throw new Error(`File already exists: ${file.name}. Please rename and try again.`);
+          }
           throw uploadError;
         }
 
@@ -119,7 +144,16 @@ export default function FileManager({ onFileSelected, onClose }: FileManagerProp
       await loadFiles(); // Refresh file list
     } catch (err) {
       console.error('Error uploading files:', err);
-      setError(err instanceof Error ? err.message : 'Failed to upload files');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to upload files';
+      
+      // Provide more helpful error messages
+      if (errorMessage.includes('row-level security policy')) {
+        setError('Storage access denied. The storage bucket needs proper permissions configured in Supabase Dashboard. Please contact your administrator.');
+      } else if (errorMessage.includes('Bucket not found')) {
+        setError('Storage bucket not found. Please ensure the "contract-files" bucket exists in your Supabase project.');
+      } else {
+        setError(errorMessage);
+      }
     } finally {
       setUploading(false);
     }
@@ -246,9 +280,21 @@ export default function FileManager({ onFileSelected, onClose }: FileManagerProp
 
       {/* Error Display */}
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
           <AlertCircle className="h-5 w-5 text-red-500 mr-3" />
-          <span className="text-red-700">{error}</span>
+          <div className="flex-1">
+            <h4 className="text-red-800 font-medium mb-1">Upload Error</h4>
+            <p className="text-red-700 text-sm">{error}</p>
+            {error.includes('Storage access denied') && (
+              <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded text-sm">
+                <p className="text-yellow-800 font-medium mb-1">Quick Fix:</p>
+                <p className="text-yellow-700">
+                  Go to your Supabase Dashboard → Storage → contract-files → Policies, 
+                  and create policies that allow authenticated users to upload files to their own folders.
+                </p>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
