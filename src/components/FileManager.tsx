@@ -24,6 +24,7 @@ export default function FileManager({ onFileSelected, onClose }: FileManagerProp
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
+  const [isSettingUpStorage, setIsSettingUpStorage] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -75,6 +76,39 @@ export default function FileManager({ onFileSelected, onClose }: FileManagerProp
       setError(err instanceof Error ? err.message : 'Failed to load files');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const setupStoragePolicies = async () => {
+    if (!user) return;
+
+    try {
+      setIsSettingUpStorage(true);
+      setError(null);
+
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/setup-storage`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ action: 'setup_policies' })
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.details || result.error || 'Failed to setup storage');
+      }
+
+      // Reload files after successful setup
+      await loadFiles();
+      
+    } catch (err) {
+      console.error('Error setting up storage:', err);
+      setError(err instanceof Error ? err.message : 'Failed to setup storage policies');
+    } finally {
+      setIsSettingUpStorage(false);
     }
   };
 
@@ -281,17 +315,41 @@ export default function FileManager({ onFileSelected, onClose }: FileManagerProp
       {/* Error Display */}
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <AlertCircle className="h-5 w-5 text-red-500 mr-3" />
-          <div className="flex-1">
+          <div className="flex items-start">
+            <AlertCircle className="h-5 w-5 text-red-500 mr-3 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
             <h4 className="text-red-800 font-medium mb-1">Upload Error</h4>
             <p className="text-red-700 text-sm">{error}</p>
-            {error.includes('Storage access denied') && (
-              <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded text-sm">
-                <p className="text-yellow-800 font-medium mb-1">Quick Fix:</p>
-                <p className="text-yellow-700">
-                  Go to your Supabase Dashboard → Storage → contract-files → Policies, 
-                  and create policies that allow authenticated users to upload files to their own folders.
-                </p>
+              {(error.includes('Storage permissions') || error.includes('row-level security policy')) && (
+                <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded text-sm">
+                  <p className="text-yellow-800 font-medium mb-2">Automatic Fix Available:</p>
+                  <p className="text-yellow-700 mb-3">
+                    The storage bucket needs proper permissions. Click the button below to automatically configure the required policies.
+                  </p>
+                  <button
+                    onClick={setupStoragePolicies}
+                    disabled={isSettingUpStorage}
+                    className={`inline-flex items-center px-3 py-2 text-sm font-medium rounded-md text-white ${
+                      isSettingUpStorage 
+                        ? 'bg-gray-400 cursor-not-allowed' 
+                        : 'bg-blue-600 hover:bg-blue-700'
+                    } transition-colors`}
+                  >
+                    {isSettingUpStorage ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        Setting up...
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle className="h-4 w-4 mr-2" />
+                        Fix Storage Permissions
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
+            </div>
               </div>
             )}
           </div>
