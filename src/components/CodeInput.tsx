@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Shield, Plus, X, File, Send, XCircle, Upload, Sparkles, Zap, FolderOpen } from 'lucide-react';
+import { Shield, Plus, X, File, Send, XCircle, Upload, Sparkles, Zap, FolderOpen, Code, FileText, Layers, Wand2 } from 'lucide-react';
 import FileManager from './FileManager';
 
 interface CodeInputProps {
@@ -121,18 +121,18 @@ export default function CodeInput({ onSubmit, isLoading }: CodeInputProps) {
   };
 
   return (
-    <div className="max-w-4xl mx-auto animate-fade-in">
+    <div className="max-w-5xl mx-auto animate-fade-in">
       {/* Enhanced Header */}
-      <div className="text-center mb-6">
-        <div className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-100 to-purple-100 text-blue-800 rounded-full text-sm font-medium mb-4 border border-blue-200/50 shadow-lg glass-effect animate-scale-in">
-          <Sparkles className="h-4 w-4 mr-2" />
-          AI-Powered Security Analysis
+      <div className="text-center mb-8">
+        <div className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-100/80 to-purple-100/80 backdrop-blur-sm text-blue-800 rounded-full text-sm font-bold mb-6 border border-blue-200/50 shadow-xl animate-scale-in hover:scale-105 transition-all duration-300">
+          <Wand2 className="h-5 w-5 mr-2" />
+          AI-Powered Security Analysis Engine
         </div>
-        <h2 className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent mb-2 animate-slide-up">
-          Upload Code or Scan Repository
+        <h2 className="text-3xl md:text-4xl font-black bg-gradient-to-r from-gray-900 via-blue-800 to-purple-800 bg-clip-text text-transparent mb-4 animate-slide-up leading-tight">
+          Upload Code, Files, or Scan Repository
         </h2>
-        <p className="text-gray-600 opacity-90 animate-slide-up">
-          Upload files, paste code, or scan GitHub repositories with our advanced AI auditor
+        <p className="text-lg text-gray-700 animate-slide-up max-w-3xl mx-auto leading-relaxed font-medium">
+          Upload files, paste code, or scan GitHub repositories with our <span className="text-blue-600 font-bold">advanced AI auditor</span>
         </p>
       </div>
 
@@ -163,37 +163,37 @@ export default function CodeInput({ onSubmit, isLoading }: CodeInputProps) {
 
       <form onSubmit={handleSubmit}>
         <div 
-          className={`relative glass-effect border-2 rounded-3xl shadow-xl transition-all duration-300 ${
+          className={`relative bg-white/90 backdrop-blur-sm border-2 rounded-3xl shadow-2xl transition-all duration-500 ${
             isDragOver 
-              ? 'border-blue-400 shadow-2xl bg-blue-50/50 scale-[1.02] animate-pulse' 
-              : 'border-gray-200/50 hover:border-blue-300/50 hover:shadow-2xl'
-          } ${isLoading ? 'opacity-75' : ''}`}
+              ? 'border-blue-400 shadow-3xl bg-gradient-to-br from-blue-50/80 to-purple-50/80 scale-[1.02] animate-pulse' 
+              : 'border-gray-200/50 hover:border-blue-300/50 hover:shadow-3xl hover:scale-[1.01]'
+          } ${isLoading ? 'opacity-75 pointer-events-none' : ''}`}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
         >
           {/* Uploaded Files */}
           {uploadedFiles.length > 0 && (
-            <div className="p-4 border-b border-gray-200/50 bg-gradient-to-r from-gray-50/80 to-blue-50/50 rounded-t-3xl backdrop-blur-sm">
-              <div className="flex items-center mb-2">
-                <div className="p-1 bg-blue-100 rounded-lg mr-2">
-                  <File className="h-4 w-4 text-blue-600" />
+            <div className="p-6 border-b border-gray-200/50 bg-gradient-to-r from-blue-50/80 to-purple-50/80 rounded-t-3xl backdrop-blur-sm">
+              <div className="flex items-center mb-4">
+                <div className="p-2 bg-gradient-to-r from-blue-100 to-blue-200 rounded-xl mr-3 shadow-lg">
+                  <Layers className="h-5 w-5 text-blue-600" />
                 </div>
-                <span className="text-sm font-semibold text-gray-700">
+                <span className="text-base font-bold text-gray-800">
                   {uploadedFiles.length} file{uploadedFiles.length > 1 ? 's' : ''} uploaded
                 </span>
               </div>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-3">
                 {uploadedFiles.map((file, index) => (
-                  <div key={index} className="inline-flex items-center bg-gradient-to-r from-blue-100 to-blue-50 text-blue-800 px-3 py-2 rounded-full text-sm font-medium shadow-sm hover:shadow-md transition-all duration-200 border border-blue-200/50 animate-scale-in">
-                    <File className="h-3 w-3 mr-1.5" />
+                  <div key={index} className="inline-flex items-center bg-gradient-to-r from-blue-100/90 to-blue-50/90 backdrop-blur-sm text-blue-800 px-4 py-2 rounded-full text-sm font-bold shadow-lg hover:shadow-xl transition-all duration-300 border border-blue-200/50 animate-scale-in hover:scale-105">
+                    <File className="h-4 w-4 mr-2" />
                     <span className="max-w-32 truncate">{file.name}</span>
                     <button
                       type="button"
                       onClick={() => removeFile(index)}
-                      className="ml-2 hover:bg-blue-200 rounded-full p-1 transition-all duration-200 hover:scale-110"
+                      className="ml-3 hover:bg-blue-200/80 rounded-full p-1 transition-all duration-300 hover:scale-110"
                     >
-                      <X className="h-3 w-3" />
+                      <X className="h-3.5 w-3.5" />
                     </button>
                   </div>
                 ))}
@@ -208,30 +208,30 @@ export default function CodeInput({ onSubmit, isLoading }: CodeInputProps) {
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder={uploadedFiles.length > 0 
-                ? "💡 Describe your smart contract or add additional context for better analysis..." 
-                : "📝 Paste your smart contract code here or describe what you want to audit..."
+                ? "💡 Describe your smart contract or add additional context for more targeted analysis..." 
+                : "📝 Paste your smart contract code here, describe what you want to audit, or drag & drop files..."
               }
-              className="w-full px-6 py-5 pr-28 border-none outline-none resize-none rounded-3xl text-gray-900 placeholder-gray-500 min-h-[80px] max-h-[300px] text-lg leading-relaxed bg-transparent"
+              className="w-full px-8 py-6 pr-32 border-none outline-none resize-none rounded-3xl text-gray-900 placeholder-gray-500 min-h-[100px] max-h-[400px] text-lg leading-relaxed bg-transparent font-medium"
               style={{ 
                 height: 'auto',
-                minHeight: '80px'
+                minHeight: '100px'
               }}
               onInput={(e) => {
                 const target = e.target as HTMLTextAreaElement;
                 target.style.height = 'auto';
-                target.style.height = Math.min(target.scrollHeight, 300) + 'px';
+                target.style.height = Math.min(target.scrollHeight, 400) + 'px';
               }}
               disabled={isLoading}
             />
 
             {/* Action Buttons */}
-            <div className="absolute right-3 bottom-3 flex items-center space-x-2">
+            <div className="absolute right-4 bottom-4 flex items-center space-x-3">
               {/* Clear Input Button */}
               {input.trim() && (
                 <button
                   type="button"
                   onClick={clearInput}
-                  className="p-2.5 hover:bg-gray-100/80 rounded-xl cursor-pointer transition-all duration-200 hover:scale-110 glass-effect"
+                  className="p-3 hover:bg-gray-100/80 rounded-xl cursor-pointer transition-all duration-300 hover:scale-110 bg-white/80 backdrop-blur-sm shadow-lg border border-gray-200/50"
                   title="Clear input"
                 >
                   <XCircle className="h-5 w-5 text-gray-400 hover:text-gray-600" />
@@ -239,7 +239,7 @@ export default function CodeInput({ onSubmit, isLoading }: CodeInputProps) {
               )}
 
               {/* File Upload Button */}
-              <label className="p-2.5 hover:bg-blue-50/80 rounded-xl cursor-pointer transition-all duration-200 hover:scale-110 group glass-effect">
+              <label className="p-3 hover:bg-blue-50/80 rounded-xl cursor-pointer transition-all duration-300 hover:scale-110 group bg-white/80 backdrop-blur-sm shadow-lg border border-gray-200/50">
                 <Upload className="h-5 w-5 text-gray-600 group-hover:text-blue-600" />
                 <input
                   type="file"
@@ -255,7 +255,7 @@ export default function CodeInput({ onSubmit, isLoading }: CodeInputProps) {
               <button
                 type="button"
                 onClick={() => setShowFileManager(true)}
-                className="p-2.5 hover:bg-gray-50/80 rounded-xl transition-all duration-200 hover:scale-110 group glass-effect"
+                className="p-3 hover:bg-gray-50/80 rounded-xl transition-all duration-300 hover:scale-110 group bg-white/80 backdrop-blur-sm shadow-lg border border-gray-200/50"
                 title="Open File Manager"
               >
                 <FolderOpen className="h-5 w-5 text-gray-600 group-hover:text-gray-900" />
@@ -265,15 +265,16 @@ export default function CodeInput({ onSubmit, isLoading }: CodeInputProps) {
               <button
                 type="submit"
                 disabled={(!input.trim() && uploadedFiles.length === 0) || isLoading}
-                className="group p-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed text-white rounded-xl transition-all duration-300 shadow-lg hover:shadow-2xl transform hover:scale-110 disabled:transform-none disabled:opacity-50"
+                className="group relative p-4 bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 hover:from-blue-700 hover:via-purple-700 hover:to-indigo-700 disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed text-white rounded-xl transition-all duration-500 shadow-xl hover:shadow-2xl transform hover:scale-110 disabled:transform-none disabled:opacity-50 overflow-hidden"
               >
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-purple-400 opacity-0 group-hover:opacity-20 transition-opacity duration-500"></div>
                 {isLoading ? (
-                  <div className="flex items-center">
-                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-2"></div>
-                    <Zap className="h-4 w-4" />
+                  <div className="flex items-center relative z-10">
+                    <div className="animate-spin rounded-full h-6 w-6 border-2 border-white border-t-transparent mr-2"></div>
+                    <Sparkles className="h-5 w-5" />
                   </div>
                 ) : (
-                  <Send className="h-5 w-5 group-hover:translate-x-0.5 transition-transform" />
+                  <Send className="h-6 w-6 group-hover:translate-x-1 transition-transform duration-300 relative z-10" />
                 )}
               </button>
             </div>
@@ -281,70 +282,70 @@ export default function CodeInput({ onSubmit, isLoading }: CodeInputProps) {
 
           {/* Drag & Drop Overlay */}
           {isDragOver && (
-            <div className="absolute inset-0 bg-gradient-to-br from-blue-50/90 to-purple-50/90 border-2 border-dashed border-blue-400 rounded-3xl flex items-center justify-center backdrop-blur-md animate-pulse">
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-50/95 to-purple-50/95 border-3 border-dashed border-blue-400 rounded-3xl flex items-center justify-center backdrop-blur-lg animate-pulse">
               <div className="text-center">
-                <div className="bg-gradient-to-r from-blue-100 to-blue-200 rounded-full p-4 w-16 h-16 mx-auto mb-4 flex items-center justify-center shadow-lg animate-bounce">
-                  <Upload className="h-8 w-8 text-blue-600" />
+                <div className="bg-gradient-to-br from-blue-100 to-purple-100 rounded-full p-6 w-20 h-20 mx-auto mb-6 flex items-center justify-center shadow-2xl animate-bounce">
+                  <Upload className="h-10 w-10 text-blue-600" />
                 </div>
-                <p className="text-blue-800 font-bold text-xl mb-2">Drop your smart contract files here</p>
-                <p className="text-blue-600 text-sm font-medium">Supports .sol, .vy, .rs, .cairo, .move and more</p>
+                <p className="text-blue-800 font-black text-2xl mb-3">Drop your smart contract files here</p>
+                <p className="text-blue-600 font-semibold">Supports .sol, .vy, .rs, .cairo, .move and more</p>
               </div>
             </div>
           )}
         </div>
 
         {/* Helper Text */}
-        <div className="mt-4 flex items-center justify-between text-sm text-gray-500 animate-slide-up">
-          <div className="flex items-center space-x-6">
+        <div className="mt-6 flex flex-col md:flex-row items-center justify-between text-sm text-gray-600 animate-slide-up space-y-4 md:space-y-0">
+          <div className="flex flex-wrap items-center gap-6">
             <div className="flex items-center">
-              <div className="p-1 bg-green-100 rounded-lg mr-2">
-                <Shield className="h-3 w-3 text-green-600" />
+              <div className="p-2 bg-gradient-to-r from-green-100 to-green-200 rounded-lg mr-3 shadow-sm">
+                <Shield className="h-4 w-4 text-green-600" />
               </div>
-              <span className="font-medium">Enterprise-grade security</span>
+              <span className="font-bold">Enterprise-grade security</span>
             </div>
             {uploadedFiles.length === 0 && (
               <div className="flex items-center">
-                <div className="p-1 bg-blue-100 rounded-lg mr-2">
-                  <Upload className="h-3 w-3 text-blue-600" />
+                <div className="p-2 bg-gradient-to-r from-blue-100 to-blue-200 rounded-lg mr-3 shadow-sm">
+                  <Upload className="h-4 w-4 text-blue-600" />
                 </div>
-                <span className="font-medium">Drag & drop or click to upload</span>
+                <span className="font-bold">Drag & drop or click to upload</span>
               </div>
             )}
             <div className="flex items-center">
-              <div className="p-1 bg-blue-100 rounded-lg mr-2">
-                <FolderOpen className="h-3 w-3 text-blue-600" />
+              <div className="p-2 bg-gradient-to-r from-blue-100 to-indigo-100 rounded-lg mr-3 shadow-sm">
+                <FolderOpen className="h-4 w-4 text-blue-600" />
               </div>
-              <span className="font-medium">File management</span>
+              <span className="font-bold">File management</span>
             </div>
             <div className="flex items-center">
-              <div className="p-1 bg-purple-100 rounded-lg mr-2">
-                <Sparkles className="h-3 w-3 text-purple-600" />
+              <div className="p-2 bg-gradient-to-r from-purple-100 to-pink-100 rounded-lg mr-3 shadow-sm">
+                <Sparkles className="h-4 w-4 text-purple-600" />
               </div>
-              <span className="font-medium">AI-powered analysis</span>
+              <span className="font-bold">AI-powered analysis</span>
             </div>
           </div>
           <div className="flex items-center space-x-2">
-            <kbd className="px-2 py-1 bg-gradient-to-r from-gray-100 to-gray-50 rounded-lg text-xs font-mono shadow-sm border border-gray-200/50">⌘</kbd>
-            <kbd className="px-2 py-1 bg-gradient-to-r from-gray-100 to-gray-50 rounded-lg text-xs font-mono shadow-sm border border-gray-200/50">Enter</kbd>
-            <span className="font-medium">to send</span>
+            <kbd className="px-3 py-2 bg-gradient-to-r from-gray-100 to-gray-50 rounded-lg text-sm font-mono shadow-lg border border-gray-200/50">⌘</kbd>
+            <kbd className="px-3 py-2 bg-gradient-to-r from-gray-100 to-gray-50 rounded-lg text-sm font-mono shadow-lg border border-gray-200/50">Enter</kbd>
+            <span className="font-bold">to send</span>
           </div>
         </div>
       </form>
 
       {/* File Manager Modal */}
       {showFileManager && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
-          <div className="glass-effect rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto animate-scale-in">
-            <div className="flex items-center justify-between p-6 border-b border-gray-200/50">
-              <h3 className="text-xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">File Manager</h3>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fade-in">
+          <div className="bg-white/95 backdrop-blur-sm rounded-3xl shadow-3xl max-w-5xl w-full max-h-[90vh] overflow-y-auto animate-scale-in border border-gray-200/50">
+            <div className="flex items-center justify-between p-8 border-b border-gray-200/50 bg-gradient-to-r from-blue-50/50 to-purple-50/50">
+              <h3 className="text-2xl font-black bg-gradient-to-r from-gray-900 via-blue-800 to-purple-800 bg-clip-text text-transparent">File Manager</h3>
               <button
                 onClick={() => setShowFileManager(false)}
-                className="p-2 hover:bg-gray-100/80 rounded-xl transition-all duration-200 hover:scale-110"
+                className="p-3 hover:bg-gray-100/80 rounded-xl transition-all duration-300 hover:scale-110 shadow-lg"
               >
-                <X className="h-5 w-5 text-gray-500" />
+                <X className="h-6 w-6 text-gray-500" />
               </button>
             </div>
-            <div className="p-6">
+            <div className="p-8">
               <FileManager
                 onFileSelected={handleFileSelected}
                 onClose={() => setShowFileManager(false)}

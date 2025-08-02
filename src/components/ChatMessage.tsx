@@ -428,32 +428,34 @@ END OF REPORT
   };
 
   return (
-    <div className={`flex space-x-3 ${type === 'user' ? 'flex-row-reverse space-x-reverse' : ''}`}>
-      <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
-        type === 'user' ? 'bg-blue-600' : 'bg-gray-700'
+    <div className={`flex space-x-4 ${type === 'user' ? 'flex-row-reverse space-x-reverse' : ''} animate-slide-up`}>
+      <div className={`flex-shrink-0 w-10 h-10 rounded-2xl flex items-center justify-center shadow-xl ${
+        type === 'user' 
+          ? 'bg-gradient-to-br from-blue-600 to-purple-600' 
+          : 'bg-gradient-to-br from-slate-700 to-gray-800 border border-gray-600/30'
       }`}>
         {type === 'user' ? (
-          <User className="h-4 w-4 text-white" />
+          <User className="h-5 w-5 text-white drop-shadow-sm" />
         ) : (
-          <Shield className="h-4 w-4 text-white" />
+          <Shield className="h-5 w-5 text-white drop-shadow-sm" />
         )}
       </div>
       
       <div className={`flex-1 space-y-4 ${type === 'user' ? 'items-end' : 'items-start'}`}>
-        <div className={`max-w-4xl ${type === 'user' ? 'ml-auto' : 'mr-auto'}`}>
-          <div className={`rounded-lg px-4 py-3 ${
+        <div className={`max-w-5xl ${type === 'user' ? 'ml-auto' : 'mr-auto'}`}>
+          <div className={`rounded-2xl px-6 py-4 shadow-xl ${
             type === 'user' 
-              ? 'bg-blue-600 text-white' 
-              : 'bg-white text-gray-900 border border-gray-200 shadow-sm'
+              ? 'bg-gradient-to-br from-blue-600 to-purple-600 text-white' 
+              : 'bg-white/95 backdrop-blur-sm text-gray-900 border border-gray-200/50 shadow-2xl'
           }`}>
             {type === 'user' ? (
-              <div className="whitespace-pre-wrap">{content}</div>
+              <div className="whitespace-pre-wrap font-medium leading-relaxed">{content}</div>
             ) : (
               <div className="relative">
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center justify-between mb-6">
                   <div className="flex items-center space-x-2">
                     {summary && (
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                      <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm font-bold shadow-lg ${
                         summary.overallRisk === 'Critical' ? 'bg-red-100 text-red-800' :
                         summary.overallRisk === 'High' ? 'bg-orange-100 text-orange-800' :
                         summary.overallRisk === 'Medium' ? 'bg-yellow-100 text-yellow-800' :
@@ -467,7 +469,7 @@ END OF REPORT
                   <div className="flex items-center space-x-2">
                     <button
                       onClick={copyContent}
-                      className="p-1.5 hover:bg-gray-100 rounded-md transition-colors"
+                      className="p-2 hover:bg-gray-100/80 rounded-xl transition-all duration-300 hover:scale-110 shadow-lg"
                       title="Copy report"
                     >
                       {copied ? (
@@ -479,7 +481,7 @@ END OF REPORT
                     {summary && (
                       <button
                         onClick={exportReport}
-                        className="relative p-1.5 hover:bg-gray-100 rounded-md transition-colors"
+                        className="relative p-2 hover:bg-gray-100/80 rounded-xl transition-all duration-300 hover:scale-110 shadow-lg"
                         title="Export report"
                       >
                         <Download className="h-4 w-4 text-gray-600" />
@@ -487,7 +489,7 @@ END OF REPORT
                     )}
                     <button
                       onClick={() => setIsExpanded(!isExpanded)}
-                      className="p-1.5 hover:bg-gray-100 rounded-md transition-colors"
+                      className="p-2 hover:bg-gray-100/80 rounded-xl transition-all duration-300 hover:scale-110 shadow-lg"
                       title={isExpanded ? "Collapse" : "Expand"}
                     >
                       {isExpanded ? (
@@ -499,7 +501,7 @@ END OF REPORT
                   </div>
                 </div>
                 
-                <div className={`prose prose-sm max-w-none ${isExpanded ? '' : 'max-h-96 overflow-hidden thin-scrollbar'}`}>
+                <div className={`prose prose-base max-w-none ${isExpanded ? '' : 'max-h-[500px] overflow-hidden thin-scrollbar'}`}>
                   <ReactMarkdown
                     components={markdownComponents}
                     remarkPlugins={[remarkGfm]}
@@ -508,14 +510,14 @@ END OF REPORT
                   </ReactMarkdown>
                 </div>
                 
-                {!isExpanded && content.length > 500 && (
-                  <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-white to-transparent pointer-events-none" />
+                {!isExpanded && content.length > 800 && (
+                  <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-white via-white/80 to-transparent pointer-events-none rounded-b-2xl" />
                 )}
               </div>
             )}
           </div>
           
-          <div className={`text-xs text-gray-500 mt-2 ${type === 'user' ? 'text-right' : 'text-left'}`}>
+          <div className={`text-sm text-gray-500 mt-3 font-medium ${type === 'user' ? 'text-right' : 'text-left'}`}>
             {formatTime(timestamp)}
           </div>
         </div>
