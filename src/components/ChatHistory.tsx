@@ -164,7 +164,6 @@ export default function ChatHistory({ messages, onStartNewAudit }: ChatHistoryPr
                   </li>
                 </ul>
               </div>
-              </ul>
             </div>
             
             {/* Supported Languages */}
