@@ -353,9 +353,6 @@ export default function FileManager({ onFileSelected, onClose }: FileManagerProp
               </div>
             )}
           </div>
-        </div>
-      )}
-
       {/* Files List */}
       <div>
         <div className="flex items-center justify-between mb-4">
