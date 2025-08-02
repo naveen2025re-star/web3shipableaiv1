@@ -10,7 +10,6 @@ interface CodeInputProps {
 export default function CodeInput({ onSubmit, isLoading }: CodeInputProps) {
   const [input, setInput] = useState('');
   const [uploadedFiles, setUploadedFiles] = useState<Array<{name: string, content: string}>>([]);
-  const [isDragOver, setIsDragOver] = useState(false);
   const [showFileManager, setShowFileManager] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -56,48 +55,9 @@ export default function CodeInput({ onSubmit, isLoading }: CodeInputProps) {
     }
   };
 
-  const handleFileSelected = (fileName: string, content: string) => {
-    setUploadedFiles([{ name: fileName, content }]);
+  const handleFilesSelected = (files: Array<{name: string, content: string}>) => {
+    setUploadedFiles(files);
     setShowFileManager(false);
-  };
-
-  const handleFileUpload = (files: FileList | File[]) => {
-    const fileArray = Array.from(files);
-    
-    fileArray.forEach(file => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const content = e.target?.result as string;
-        setUploadedFiles(prev => [...prev, { name: file.name, content }]);
-      };
-      reader.readAsText(file);
-    });
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (files && files.length > 0) {
-      handleFileUpload(files);
-    }
-  };
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragOver(true);
-  };
-
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragOver(false);
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragOver(false);
-    const files = e.dataTransfer.files;
-    if (files && files.length > 0) {
-      handleFileUpload(files);
-    }
   };
 
   const removeFile = (index: number) => {
@@ -163,14 +123,7 @@ export default function CodeInput({ onSubmit, isLoading }: CodeInputProps) {
 
       <form onSubmit={handleSubmit}>
         <div 
-          className={`relative bg-white/90 backdrop-blur-sm border-2 rounded-3xl shadow-2xl transition-all duration-500 ${
-            isDragOver 
-              ? 'border-blue-400 shadow-3xl bg-gradient-to-br from-blue-50/80 to-purple-50/80 scale-[1.02] animate-pulse' 
-              : 'border-gray-200/50 hover:border-blue-300/50 hover:shadow-3xl hover:scale-[1.01]'
-          } ${isLoading ? 'opacity-75 pointer-events-none' : ''}`}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
+          className={`relative bg-white/90 backdrop-blur-sm border-2 rounded-3xl shadow-2xl transition-all duration-500 border-gray-200/50 hover:border-blue-300/50 hover:shadow-3xl hover:scale-[1.01] ${isLoading ? 'opacity-75 pointer-events-none' : ''}`}
         >
           {/* Uploaded Files */}
           {uploadedFiles.length > 0 && (
@@ -238,27 +191,14 @@ export default function CodeInput({ onSubmit, isLoading }: CodeInputProps) {
                 </button>
               )}
 
-              {/* File Upload Button */}
-              <label className="p-3 hover:bg-blue-50/80 rounded-xl cursor-pointer transition-all duration-300 hover:scale-110 group bg-white/80 backdrop-blur-sm shadow-lg border border-gray-200/50">
-                <Upload className="h-5 w-5 text-gray-600 group-hover:text-blue-600" />
-                <input
-                  type="file"
-                  onChange={handleFileChange}
-                  accept=".sol,.vy,.rs,.js,.ts,.cairo,.move"
-                  multiple
-                  className="hidden"
-                  disabled={isLoading}
-                />
-              </label>
-
               {/* File Manager Button */}
               <button
                 type="button"
                 onClick={() => setShowFileManager(true)}
-                className="p-3 hover:bg-gray-50/80 rounded-xl transition-all duration-300 hover:scale-110 group bg-white/80 backdrop-blur-sm shadow-lg border border-gray-200/50"
+                className="p-3 hover:bg-blue-50/80 rounded-xl transition-all duration-300 hover:scale-110 group bg-white/80 backdrop-blur-sm shadow-lg border border-gray-200/50"
                 title="Open File Manager"
               >
-                <FolderOpen className="h-5 w-5 text-gray-600 group-hover:text-gray-900" />
+                <FolderOpen className="h-5 w-5 text-gray-600 group-hover:text-blue-600" />
               </button>
 
               {/* Submit Button */}
@@ -280,18 +220,6 @@ export default function CodeInput({ onSubmit, isLoading }: CodeInputProps) {
             </div>
           </div>
 
-          {/* Drag & Drop Overlay */}
-          {isDragOver && (
-            <div className="absolute inset-0 bg-gradient-to-br from-blue-50/95 to-purple-50/95 border-3 border-dashed border-blue-400 rounded-3xl flex items-center justify-center backdrop-blur-lg animate-pulse">
-              <div className="text-center">
-                <div className="bg-gradient-to-br from-blue-100 to-purple-100 rounded-full p-6 w-20 h-20 mx-auto mb-6 flex items-center justify-center shadow-2xl animate-bounce">
-                  <Upload className="h-10 w-10 text-blue-600" />
-                </div>
-                <p className="text-blue-800 font-black text-2xl mb-3">Drop your smart contract files here</p>
-                <p className="text-blue-600 font-semibold">Supports .sol, .vy, .rs, .cairo, .move and more</p>
-              </div>
-            </div>
-          )}
         </div>
 
         {/* Helper Text */}
@@ -303,14 +231,6 @@ export default function CodeInput({ onSubmit, isLoading }: CodeInputProps) {
               </div>
               <span className="font-bold">Enterprise-grade security</span>
             </div>
-            {uploadedFiles.length === 0 && (
-              <div className="flex items-center">
-                <div className="p-2 bg-gradient-to-r from-blue-100 to-blue-200 rounded-lg mr-3 shadow-sm">
-                  <Upload className="h-4 w-4 text-blue-600" />
-                </div>
-                <span className="font-bold">Drag & drop or click to upload</span>
-              </div>
-            )}
             <div className="flex items-center">
               <div className="p-2 bg-gradient-to-r from-blue-100 to-indigo-100 rounded-lg mr-3 shadow-sm">
                 <FolderOpen className="h-4 w-4 text-blue-600" />
@@ -347,7 +267,7 @@ export default function CodeInput({ onSubmit, isLoading }: CodeInputProps) {
             </div>
             <div className="p-8">
               <FileManager
-                onFileSelected={handleFileSelected}
+                onFilesSelected={handleFilesSelected}
                 onClose={() => setShowFileManager(false)}
               />
             </div>

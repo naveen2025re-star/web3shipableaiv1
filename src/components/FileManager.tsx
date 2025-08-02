@@ -12,17 +12,17 @@ interface UploadedFile {
 }
 
 interface FileManagerProps {
-  onFileSelected: (fileName: string, content: string) => void;
+  onFilesSelected: (files: Array<{name: string, content: string}>) => void;
   onClose: () => void;
 }
 
-export default function FileManager({ onFileSelected, onClose }: FileManagerProps) {
+export default function FileManager({ onFilesSelected, onClose }: FileManagerProps) {
   const { user } = useAuth();
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [selectedFile, setSelectedFile] = useState<string | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
   const [isSettingUpStorage, setIsSettingUpStorage] = useState(false);
 
   useEffect(() => {
@@ -146,29 +146,46 @@ export default function FileManager({ onFileSelected, onClose }: FileManagerProp
     }
   };
 
-  const handleFileSelect = async (file: UploadedFile) => {
+  const toggleFileSelection = (fileId: string) => {
+    setSelectedFiles(prev => {
+      const newSelection = new Set(prev);
+      if (newSelection.has(fileId)) {
+        newSelection.delete(fileId);
+      } else {
+        newSelection.add(fileId);
+      }
+      return newSelection;
+    });
+  };
+
+  const handleFilesSelect = async () => {
     if (!user) return;
+    
+    if (selectedFiles.size === 0) {
+      setError('Please select at least one file');
+      return;
+    }
 
     try {
-      setSelectedFile(file.id);
       setError(null);
+      
+      const selectedFileData = await Promise.all(
+        Array.from(selectedFiles).map(async (fileId) => {
+          const { data, error } = await supabase
+            .from('user_files')
+            .select('filename, content')
+            .eq('id', fileId)
+            .single();
 
-      // Get file content from database
-      const { data, error } = await supabase
-        .from('user_files')
-        .select('content')
-        .eq('id', file.id)
-        .single();
+          if (error) throw error;
+          return { name: data.filename, content: data.content };
+        })
+      );
 
-      if (error) {
-        throw error;
-      }
-
-      onFileSelected(file.name, data.content);
+      onFilesSelected(selectedFileData);
     } catch (err) {
       console.error('Error downloading file:', err);
-      setError(err instanceof Error ? err.message : 'Failed to download file');
-      setSelectedFile(null);
+      setError(err instanceof Error ? err.message : 'Failed to download files');
     }
   };
 
@@ -303,10 +320,16 @@ export default function FileManager({ onFileSelected, onClose }: FileManagerProp
               <div
                 key={file.id}
                 className={`flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors ${
-                  selectedFile === file.id ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
+                  selectedFiles.has(file.id) ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
                 }`}
               >
                 <div className="flex items-center space-x-3 flex-1 min-w-0">
+                  <input
+                    type="checkbox"
+                    checked={selectedFiles.has(file.id)}
+                    onChange={() => toggleFileSelection(file.id)}
+                    className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+                  />
                   {getFileIcon(file.name)}
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-gray-900 truncate">
@@ -324,27 +347,6 @@ export default function FileManager({ onFileSelected, onClose }: FileManagerProp
 
                 <div className="flex items-center space-x-2">
                   <button
-                    onClick={() => handleFileSelect(file)}
-                    disabled={selectedFile === file.id}
-                    className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
-                      selectedFile === file.id
-                        ? 'bg-green-100 text-green-800 cursor-not-allowed'
-                        : 'bg-blue-100 text-blue-800 hover:bg-blue-200'
-                    }`}
-                  >
-                    {selectedFile === file.id ? (
-                      <>
-                        <CheckCircle className="h-3 w-3 mr-1 inline" />
-                        Selected
-                      </>
-                    ) : (
-                      <>
-                        <Eye className="h-3 w-3 mr-1 inline" />
-                        Select
-                      </>
-                    )}
-                  </button>
-                  <button
                     onClick={() => handleFileDelete(file)}
                     className="p-1 text-red-600 hover:bg-red-50 rounded transition-colors"
                     title="Delete file"
@@ -360,11 +362,25 @@ export default function FileManager({ onFileSelected, onClose }: FileManagerProp
 
       {/* Action Buttons */}
       <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+        {selectedFiles.size > 0 && (
+          <div className="flex items-center text-sm text-gray-600 mr-auto">
+            <CheckCircle className="h-4 w-4 mr-1 text-green-500" />
+            {selectedFiles.size} file{selectedFiles.size !== 1 ? 's' : ''} selected
+          </div>
+        )}
         <button
           onClick={onClose}
           className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
         >
           Cancel
+        </button>
+        <button
+          onClick={handleFilesSelect}
+          disabled={selectedFiles.size === 0}
+          className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
+        >
+          <Eye className="h-4 w-4" />
+          <span>Use Selected Files ({selectedFiles.size})</span>
         </button>
       </div>
     </div>
