@@ -318,8 +318,8 @@ export default function FileManager({ onFileSelected, onClose }: FileManagerProp
           <div className="flex items-start">
             <AlertCircle className="h-5 w-5 text-red-500 mr-3 flex-shrink-0 mt-0.5" />
             <div className="flex-1">
-            <h4 className="text-red-800 font-medium mb-1">Upload Error</h4>
-            <p className="text-red-700 text-sm">{error}</p>
+              <h4 className="text-red-800 font-medium mb-1">Upload Error</h4>
+              <p className="text-red-700 text-sm">{error}</p>
               {(error.includes('Storage permissions') || error.includes('row-level security policy')) && (
                 <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded text-sm">
                   <p className="text-yellow-800 font-medium mb-2">Automatic Fix Available:</p>
@@ -350,9 +350,10 @@ export default function FileManager({ onFileSelected, onClose }: FileManagerProp
                 </div>
               )}
             </div>
-              </div>
-            )}
           </div>
+        </div>
+      )}
+
       {/* Files List */}
       <div>
         <div className="flex items-center justify-between mb-4">
