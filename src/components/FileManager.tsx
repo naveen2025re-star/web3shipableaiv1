@@ -8,7 +8,6 @@ interface UploadedFile {
   name: string;
   size: number;
   created_at: string;
-  file_path: string;
   content_type: string;
 }
 
@@ -39,35 +38,23 @@ export default function FileManager({ onFileSelected, onClose }: FileManagerProp
       setLoading(true);
       setError(null);
 
-      // List files from storage
-      const { data: storageFiles, error: storageError } = await supabase.storage
-        .from('contract-files')
-        .list(`${user.id}/`, {
-          limit: 100,
-          offset: 0,
-          sortBy: { column: 'created_at', order: 'desc' }
-        });
+      // Load files from database
+      const { data: userFiles, error: dbError } = await supabase
+        .from('user_files')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-      if (storageError) {
-        if (storageError.message.includes('row-level security policy')) {
-          throw new Error('Storage access denied. Please ensure proper permissions are configured.');
-        }
-        if (storageError.message.includes('Bucket not found')) {
-          throw new Error('Storage bucket not found. Please ensure the "contract-files" bucket exists.');
-        }
-        throw storageError;
+      if (dbError) {
+        throw dbError;
       }
 
       // Format files for display
-      const formattedFiles: UploadedFile[] = (storageFiles || [])
-        .filter(file => file.name !== '.emptyFolderPlaceholder')
-        .map(file => ({
-          id: file.id || `${user.id}/${file.name}`,
-          name: file.name,
-          size: file.metadata?.size || 0,
-          created_at: file.created_at || new Date().toISOString(),
-          file_path: `${user.id}/${file.name}`,
-          content_type: file.metadata?.mimetype || 'text/plain'
+      const formattedFiles: UploadedFile[] = (userFiles || []).map(file => ({
+        id: file.id,
+        name: file.filename,
+        size: file.file_size,
+        created_at: file.created_at,
+        content_type: file.content_type
         }));
 
       setFiles(formattedFiles);
@@ -119,32 +106,8 @@ export default function FileManager({ onFileSelected, onClose }: FileManagerProp
     setError(null);
 
     try {
-      // First, test if we can access the bucket by trying to list files
-      const { error: testError } = await supabase.storage
-        .from('contract-files')
-        .list(`${user.id}/`, { limit: 1 });
-
-      if (testError && testError.message.includes('Bucket not found')) {
-        throw new Error('Storage bucket not configured. Please contact support.');
-      }
-
-      if (testError && testError.message.includes('row-level security policy')) {
-        throw new Error('Storage permissions not configured. Please ensure you have proper access rights.');
-      }
-
       const uploadPromises = Array.from(uploadFiles).map(async (file) => {
         // Validate file type
-        const allowedTypes = [
-          'text/plain',
-          'application/javascript',
-          'text/javascript',
-          'application/typescript',
-          'text/x-solidity',
-          'text/x-python',
-          'text/x-rust',
-          'application/json'
-        ];
-
         const fileExtension = file.name.split('.').pop()?.toLowerCase();
         const allowedExtensions = ['sol', 'vy', 'rs', 'js', 'ts', 'jsx', 'tsx', 'py', 'cairo', 'move', 'json', 'txt'];
 
@@ -152,22 +115,21 @@ export default function FileManager({ onFileSelected, onClose }: FileManagerProp
           throw new Error(`File type not supported: ${file.name}`);
         }
 
-        // Upload to Supabase Storage
-        const filePath = `${user.id}/${Date.now()}-${file.name}`;
-        const { error: uploadError } = await supabase.storage
-          .from('contract-files')
-          .upload(filePath, file, {
-            cacheControl: '3600',
-            upsert: false
+        // Read file content
+        const content = await file.text();
+        
+        // Save to database
+        const { error: uploadError } = await supabase
+          .from('user_files')
+          .insert({
+            user_id: user.id,
+            filename: file.name,
+            content: content,
+            content_type: file.type || 'text/plain',
+            file_size: file.size
           });
 
         if (uploadError) {
-          if (uploadError.message.includes('row-level security policy')) {
-            throw new Error(`Upload failed: Storage permissions not configured properly. File: ${file.name}`);
-          }
-          if (uploadError.message.includes('Duplicate')) {
-            throw new Error(`File already exists: ${file.name}. Please rename and try again.`);
-          }
           throw uploadError;
         }
 
@@ -178,16 +140,7 @@ export default function FileManager({ onFileSelected, onClose }: FileManagerProp
       await loadFiles(); // Refresh file list
     } catch (err) {
       console.error('Error uploading files:', err);
-      const errorMessage = err instanceof Error ? err.message : 'Failed to upload files';
-      
-      // Provide more helpful error messages
-      if (errorMessage.includes('row-level security policy')) {
-        setError('Storage access denied. The storage bucket needs proper permissions configured in Supabase Dashboard. Please contact your administrator.');
-      } else if (errorMessage.includes('Bucket not found')) {
-        setError('Storage bucket not found. Please ensure the "contract-files" bucket exists in your Supabase project.');
-      } else {
-        setError(errorMessage);
-      }
+      setError(err instanceof Error ? err.message : 'Failed to upload files');
     } finally {
       setUploading(false);
     }
@@ -200,18 +153,18 @@ export default function FileManager({ onFileSelected, onClose }: FileManagerProp
       setSelectedFile(file.id);
       setError(null);
 
-      // Download file content from Supabase Storage
-      const { data, error } = await supabase.storage
-        .from('contract-files')
-        .download(file.file_path);
+      // Get file content from database
+      const { data, error } = await supabase
+        .from('user_files')
+        .select('content')
+        .eq('id', file.id)
+        .single();
 
       if (error) {
         throw error;
       }
 
-      // Convert blob to text
-      const content = await data.text();
-      onFileSelected(file.name, content);
+      onFileSelected(file.name, data.content);
     } catch (err) {
       console.error('Error downloading file:', err);
       setError(err instanceof Error ? err.message : 'Failed to download file');
@@ -225,9 +178,10 @@ export default function FileManager({ onFileSelected, onClose }: FileManagerProp
     try {
       setError(null);
 
-      const { error } = await supabase.storage
-        .from('contract-files')
-        .remove([file.file_path]);
+      const { error } = await supabase
+        .from('user_files')
+        .delete()
+        .eq('id', file.id);
 
       if (error) {
         throw error;
@@ -320,35 +274,6 @@ export default function FileManager({ onFileSelected, onClose }: FileManagerProp
             <div className="flex-1">
               <h4 className="text-red-800 font-medium mb-1">Upload Error</h4>
               <p className="text-red-700 text-sm">{error}</p>
-              {(error.includes('Storage permissions') || error.includes('row-level security policy')) && (
-                <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded text-sm">
-                  <p className="text-yellow-800 font-medium mb-2">Automatic Fix Available:</p>
-                  <p className="text-yellow-700 mb-3">
-                    The storage bucket needs proper permissions. Click the button below to automatically configure the required policies.
-                  </p>
-                  <button
-                    onClick={setupStoragePolicies}
-                    disabled={isSettingUpStorage}
-                    className={`inline-flex items-center px-3 py-2 text-sm font-medium rounded-md text-white ${
-                      isSettingUpStorage 
-                        ? 'bg-gray-400 cursor-not-allowed' 
-                        : 'bg-blue-600 hover:bg-blue-700'
-                    } transition-colors`}
-                  >
-                    {isSettingUpStorage ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                        Setting up...
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircle className="h-4 w-4 mr-2" />
-                        Fix Storage Permissions
-                      </>
-                    )}
-                  </button>
-                </div>
-              )}
             </div>
           </div>
         </div>
