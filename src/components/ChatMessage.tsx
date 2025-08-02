@@ -501,7 +501,7 @@ END OF REPORT
                   </div>
                 </div>
                 
-                <div className={`prose prose-base max-w-none ${isExpanded ? '' : 'max-h-[500px] overflow-hidden thin-scrollbar'}`}>
+                <div className={`prose prose-base max-w-none ${isExpanded ? 'max-h-none' : 'max-h-[600px] overflow-hidden'} relative`}>
                   <ReactMarkdown
                     components={markdownComponents}
                     remarkPlugins={[remarkGfm]}
@@ -510,8 +510,15 @@ END OF REPORT
                   </ReactMarkdown>
                 </div>
                 
-                {!isExpanded && content.length > 800 && (
-                  <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-white via-white/80 to-transparent pointer-events-none rounded-b-2xl" />
+                {!isExpanded && content.length > 1000 && (
+                  <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-white via-white/90 to-transparent pointer-events-none rounded-b-2xl flex items-end justify-center pb-4">
+                    <button
+                      onClick={() => setIsExpanded(true)}
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-lg hover:shadow-xl transition-all duration-300 pointer-events-auto"
+                    >
+                      Show More
+                    </button>
+                  </div>
                 )}
               </div>
             )}
