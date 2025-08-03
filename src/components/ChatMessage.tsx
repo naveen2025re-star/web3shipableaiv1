@@ -77,6 +77,14 @@ export default function ChatMessage({ type, content, findings, summary, timestam
   const [isExpanded, setIsExpanded] = useState(false);
   const [copied, setCopied] = useState(false);
   const [copiedCodeBlocks, setCopiedCodeBlocks] = useState<{[key: string]: boolean}>({});
+  const [isStreaming, setIsStreaming] = useState(false);
+
+  // Detect if this is a streaming/loading message
+  React.useEffect(() => {
+    const streamingIndicators = ['🔍 Analyzing', '⚡ Processing', '📊 Generating'];
+    const isStreamingMessage = streamingIndicators.some(indicator => content.includes(indicator));
+    setIsStreaming(isStreamingMessage);
+  }, [content]);
 
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -446,12 +454,18 @@ END OF REPORT
           <div className={`rounded-2xl px-6 py-4 shadow-xl ${
             type === 'user' 
               ? 'bg-gradient-to-br from-blue-600 to-purple-600 text-white' 
-              : 'bg-white/95 backdrop-blur-sm text-gray-900 border border-gray-200/50 shadow-2xl'
+              : `bg-white/95 backdrop-blur-sm text-gray-900 border border-gray-200/50 shadow-2xl ${isStreaming ? 'animate-pulse' : ''}`
           }`}>
             {type === 'user' ? (
               <div className="whitespace-pre-wrap font-medium leading-relaxed">{content}</div>
             ) : (
               <div className="relative">
+                {isStreaming && (
+                  <div className="flex items-center space-x-2 mb-4">
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-600 border-t-transparent"></div>
+                    <span className="text-sm text-blue-600 font-medium">AI is analyzing your contract...</span>
+                  </div>
+                )}
                 <div className="flex items-center justify-between mb-6">
                   <div className="flex items-center space-x-2">
                     {summary && (
@@ -466,7 +480,8 @@ END OF REPORT
                       </span>
                     )}
                   </div>
-                  <div className="flex items-center space-x-2">
+                  {!isStreaming && (
+                    <div className="flex items-center space-x-2">
                     <button
                       onClick={copyContent}
                       className="p-2 hover:bg-gray-100/80 rounded-xl transition-all duration-300 hover:scale-110 shadow-lg"
@@ -498,10 +513,11 @@ END OF REPORT
                         <ChevronDown className="h-4 w-4 text-gray-600" />
                       )}
                     </button>
-                  </div>
+                    </div>
+                  )}
                 </div>
                 
-                <div className="prose prose-base max-w-none">
+                <div className={`prose prose-base max-w-none ${isStreaming ? 'opacity-75' : ''}`}>
                   <ReactMarkdown
                     components={markdownComponents}
                     remarkPlugins={[remarkGfm]}
@@ -514,7 +530,7 @@ END OF REPORT
           </div>
           
           <div className={`text-sm text-gray-500 mt-3 font-medium ${type === 'user' ? 'text-right' : 'text-left'}`}>
-            {formatTime(timestamp)}
+            {isStreaming ? 'Processing...' : formatTime(timestamp)}
           </div>
         </div>
       </div>

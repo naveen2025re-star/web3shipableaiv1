@@ -187,6 +187,7 @@ export default function ChatHistory({ messages, onStartNewAudit }: ChatHistoryPr
                 type={message.type}
                 content={message.content}
                 findings={message.findings}
+                summary={message.summary}
                 timestamp={message.timestamp}
               />
             </div>

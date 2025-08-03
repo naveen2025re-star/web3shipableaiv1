@@ -107,6 +107,10 @@
     animation: scaleIn 0.2s ease-out;
   }
   
+  .animate-typing {
+    animation: typing 1.5s infinite;
+  }
+  
   @keyframes fadeIn {
     from { opacity: 0; }
     to { opacity: 1; }
@@ -132,6 +136,11 @@
       opacity: 1;
       transform: scale(1);
     }
+  }
+  
+  @keyframes typing {
+    0%, 50% { opacity: 1; }
+    51%, 100% { opacity: 0.5; }
   }
   
   .font-mono {

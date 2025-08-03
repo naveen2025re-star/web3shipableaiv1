@@ -307,6 +307,17 @@ export function useAuditWithSessions() {
       await updateSessionTitle(currentSessionId, title);
     }
     
+    // Create placeholder assistant message for streaming
+    const assistantMessageId = (Date.now() + 1).toString();
+    const placeholderMessage: Message = {
+      id: assistantMessageId,
+      type: 'assistant',
+      content: '🔍 Analyzing your smart contract...',
+      timestamp: new Date()
+    };
+    
+    setMessages(prev => [...prev, placeholderMessage]);
+    
     try {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -376,6 +387,13 @@ export function useAuditWithSessions() {
         throw new Error(userMessage);
       }
       
+      // Update placeholder with loading message
+      setMessages(prev => prev.map(msg => 
+        msg.id === assistantMessageId 
+          ? { ...msg, content: '⚡ Processing audit results...' }
+          : msg
+      ));
+      
       const data = await response.json();
       console.log('Received audit response', {
         hasAudit: !!data.audit,
@@ -387,12 +405,23 @@ export function useAuditWithSessions() {
         throw new Error('Invalid response format from audit service');
       }
       
+      // Update with final processing message
+      setMessages(prev => prev.map(msg => 
+        msg.id === assistantMessageId 
+          ? { ...msg, content: '📊 Generating detailed security report...' }
+          : msg
+      ));
+      
+      // Small delay to show the processing message
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
       const auditResult = data.audit || 'Unable to complete audit analysis.';
       
       const { content, summary, findings } = parseAuditResponse(auditResult);
       
+      // Update with complete response
       const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
+        id: assistantMessageId,
         type: 'assistant',
         content: content,
         findings: findings,
@@ -400,20 +429,24 @@ export function useAuditWithSessions() {
         timestamp: new Date()
       };
       
-      setMessages(prev => [...prev, assistantMessage]);
+      setMessages(prev => prev.map(msg => 
+        msg.id === assistantMessageId ? assistantMessage : msg
+      ));
       await saveMessage(assistantMessage);
       
     } catch (error) {
       console.error('Audit error:', error);
       
       const errorMessage: Message = {
-        id: (Date.now() + 1).toString(),
+        id: assistantMessageId,
         type: 'assistant',
         content: `❌ **Audit Failed** - ${error instanceof Error ? error.message : 'Unknown error occurred'}. Please check your configuration and try again.`,
         timestamp: new Date()
       };
       
-      setMessages(prev => [...prev, errorMessage]);
+      setMessages(prev => prev.map(msg => 
+        msg.id === assistantMessageId ? errorMessage : msg
+      ));
       await saveMessage(errorMessage);
     } finally {
       setIsLoading(false);
