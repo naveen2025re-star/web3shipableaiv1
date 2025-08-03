@@ -17,9 +17,9 @@ interface ChatHistoryProps {
 
 export default function ChatHistory({ messages, onStartNewAudit }: ChatHistoryProps) {
   return (
-    <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6 space-y-4 md:space-y-6 thin-scrollbar bg-gradient-to-br from-slate-50/80 via-blue-50/30 to-purple-50/20 min-h-0">
+    <div className="h-full overflow-y-auto overflow-x-hidden p-4 md:p-6 bg-gradient-to-br from-slate-50/80 via-blue-50/30 to-purple-50/20">
       {messages.length === 0 ? (
-        <div className="flex items-center justify-center min-h-full">
+        <div className="flex items-center justify-center h-full">
           <div className="text-center max-w-5xl mx-auto px-4 md:px-6 py-8 animate-fade-in">
             {/* Hero Section */}
             <div className="relative mb-12 animate-scale-in">
@@ -180,7 +180,7 @@ export default function ChatHistory({ messages, onStartNewAudit }: ChatHistoryPr
           </div>
         </div>
       ) : (
-        <div className="space-y-8 pb-8">
+        <div className="space-y-6 pb-8">
           {messages.map((message, index) => (
             <div key={message.id} className="animate-slide-up" style={{ animationDelay: `${index * 0.1}s` }}>
               <ChatMessage

@@ -169,7 +169,7 @@ export default function ChatApp() {
 
 
   return (
-    <div className="h-screen flex bg-gray-50">
+    <div className="h-screen flex bg-gray-50 overflow-hidden">
       <Sidebar
         currentSessionId={currentSessionId}
         sessions={allSessions}
@@ -182,14 +182,14 @@ export default function ChatApp() {
         onProjectSelect={setCurrentProject}
       />
       
-      <div className="flex-1 flex flex-col min-h-0">
-        <div className="flex-1 min-h-0 overflow-hidden relative">
+      <div className="flex-1 flex flex-col h-full overflow-hidden">
+        <div className="flex-1 h-0 overflow-hidden">
           <ChatHistory 
             messages={messages} 
             onStartNewAudit={handleStartNewAudit}
           />
         </div>
-        <div className="flex-shrink-0 p-4 bg-white border-t border-gray-200 relative z-10">
+        <div className="flex-shrink-0 p-4 bg-white border-t border-gray-200">
           <CodeInput onSubmit={handleAudit} isLoading={isLoading} />
         </div>
       </div>
