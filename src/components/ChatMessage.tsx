@@ -442,11 +442,11 @@ END OF REPORT
       </div>
       
       <div className={`flex-1 space-y-4 ${type === 'user' ? 'items-end' : 'items-start'}`}>
-        <div className={`max-w-5xl w-full ${type === 'user' ? 'ml-auto' : 'mr-auto'}`}>
+        <div className={`max-w-4xl w-full ${type === 'user' ? 'ml-auto' : 'mr-auto'}`}>
           <div className={`rounded-2xl px-6 py-4 shadow-xl ${
             type === 'user' 
               ? 'bg-gradient-to-br from-blue-600 to-purple-600 text-white' 
-              : 'bg-white/95 backdrop-blur-sm text-gray-900 border border-gray-200/50 shadow-2xl overflow-hidden'
+              : 'bg-white/95 backdrop-blur-sm text-gray-900 border border-gray-200/50 shadow-2xl'
           }`}>
             {type === 'user' ? (
               <div className="whitespace-pre-wrap font-medium leading-relaxed">{content}</div>
@@ -501,7 +501,7 @@ END OF REPORT
                   </div>
                 </div>
                 
-                <div className="prose prose-base max-w-none overflow-auto">
+                <div className="prose prose-base max-w-none">
                   <ReactMarkdown
                     components={markdownComponents}
                     remarkPlugins={[remarkGfm]}
