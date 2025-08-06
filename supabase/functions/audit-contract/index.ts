@@ -484,28 +484,6 @@ Deno.serve(async (req: Request) => {
 
     // Function to escape markdown special characters in text fields only
     const escapeMarkdown = (text: string): string => {
-            method: 'PATCH',
-            headers: {
-              'Authorization': `Bearer ${supabaseServiceKey}`,
-              'apikey': supabaseServiceKey,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              credits: userCredits - auditCost
-            })
-          });
-
-          if (!updateResponse.ok) {
-            console.error('Failed to deduct credits:', await updateResponse.text());
-          }
-        }
-      } catch (error) {
-        console.error('Error deducting credits:', error);
-      }
-    }
-
-    // Function to escape markdown special characters in text fields only
-    const escapeMarkdown = (text: string): string => {
       if (!text) return text;
       return text
         .replace(/`/g, '\\`')           // Escape backticks
