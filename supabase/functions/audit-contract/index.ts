@@ -404,13 +404,13 @@ Deno.serve(async (req: Request) => {
       return new Response(
         JSON.stringify({ 
           error: "Insufficient credits",
-          details: `This audit requires ${auditCost} credits (${linesOfCode} lines × ${COST_PER_LINE} + ${numberOfFiles} files × ${COST_PER_FILE} + ${BASE_SCAN_COST} base cost), but you only have ${userCredits} credits available.`,
+          details: `This audit requires ${auditCost} credits, but you only have ${userCredits} credits available.`,
           requiredCredits: auditCost,
           availableCredits: userCredits,
           breakdown: {
             baseCost: BASE_SCAN_COST,
-            linesCost: Math.ceil(linesOfCode * COST_PER_LINE),
-            filesCost: Math.ceil(numberOfFiles * COST_PER_FILE),
+            linesCost: linesOfCode * COST_PER_LINE,
+            filesCost: numberOfFiles * COST_PER_FILE,
             linesOfCode,
             numberOfFiles
           }
@@ -443,7 +443,47 @@ Deno.serve(async (req: Request) => {
           const userId = userData.id;
 
           // Deduct credits
-          const updateResponse = await fetch(`${supabaseUrl}/rest/v1/user_profiles?id=eq.${userId}`, {
+          const { data: currentProfile, error: fetchError } = await fetch(`${supabaseUrl}/rest/v1/user_profiles?id=eq.${userId}&select=credits`, {
+            headers: {
+              'Authorization': `Bearer ${supabaseServiceKey}`,
+              'apikey': supabaseServiceKey,
+              'Content-Type': 'application/json',
+            },
+          }).then(res => res.json());
+
+          if (fetchError || !currentProfile || currentProfile.length === 0) {
+            console.error('Failed to fetch current credits:', fetchError);
+          } else {
+            const currentCredits = currentProfile[0].credits;
+            const newCredits = Math.max(0, currentCredits - auditCost);
+            
+            const updateResponse = await fetch(`${supabaseUrl}/rest/v1/user_profiles?id=eq.${userId}`, {
+              method: 'PATCH',
+              headers: {
+                'Authorization': `Bearer ${supabaseServiceKey}`,
+                'apikey': supabaseServiceKey,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                credits: newCredits
+              })
+            });
+
+            if (!updateResponse.ok) {
+              console.error('Failed to deduct credits:', await updateResponse.text());
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error deducting credits:', error);
+      }
+    }
+
+    // Also deduct from the userCredits variable for response
+    const remainingCredits = Math.max(0, userCredits - auditCost);
+
+    // Function to escape markdown special characters in text fields only
+    const escapeMarkdown = (text: string): string => {
             method: 'PATCH',
             headers: {
               'Authorization': `Bearer ${supabaseServiceKey}`,

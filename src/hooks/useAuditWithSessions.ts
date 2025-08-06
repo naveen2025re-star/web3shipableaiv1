@@ -374,8 +374,8 @@ export function useAuditWithSessions() {
           if (errorData.breakdown) {
             userMessage += '\n\n**Cost Breakdown:**\n';
             userMessage += `• Base scan: ${errorData.breakdown.baseCost} credits\n`;
-            userMessage += `• Lines of code: ${errorData.breakdown.linesOfCode} × 0.01 = ${errorData.breakdown.linesCost} credits\n`;
-            userMessage += `• Files: ${errorData.breakdown.numberOfFiles} × 0.5 = ${errorData.breakdown.filesCost} credits\n`;
+            userMessage += `• Lines of code: ${errorData.breakdown.linesOfCode} × ${COST_PER_LINE} = ${errorData.breakdown.linesCost.toFixed(2)} credits\n`;
+            userMessage += `• Files: ${errorData.breakdown.numberOfFiles} × ${COST_PER_FILE} = ${errorData.breakdown.filesCost.toFixed(2)} credits\n`;
             userMessage += `• **Total: ${errorData.requiredCredits} credits**\n\n`;
             userMessage += `You currently have ${errorData.availableCredits} credits available.`;
           }

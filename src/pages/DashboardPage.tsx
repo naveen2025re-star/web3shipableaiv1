@@ -24,6 +24,7 @@ import {
 import { useProjects, Project } from '../hooks/useProjects';
 import { useAuth } from '../contexts/AuthContext';
 import ProjectModal from '../components/ProjectModal';
+import React, { useEffect } from 'react';
 
 export default function DashboardPage() {
   const navigate = useNavigate();

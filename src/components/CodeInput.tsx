@@ -22,7 +22,7 @@ export default function CodeInput({ onSubmit, isLoading }: CodeInputProps) {
   const [estimatedCost, setEstimatedCost] = useState<number>(0);
 
   // Load user credits
-  React.useEffect(() => {
+  useEffect(() => {
     const loadCredits = async () => {
       const { data } = await getUserProfile();
       if (data) {
@@ -33,7 +33,7 @@ export default function CodeInput({ onSubmit, isLoading }: CodeInputProps) {
   }, [getUserProfile]);
 
   // Calculate estimated cost
-  React.useEffect(() => {
+  useEffect(() => {
     const calculateCost = () => {
       let totalLines = 0;
       let totalFiles = 0;
