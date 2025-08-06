@@ -281,7 +281,8 @@ export function useAuditWithSessions() {
     setMessages: React.Dispatch<React.SetStateAction<Message[]>>,
     setIsLoading: React.Dispatch<React.SetStateAction<boolean>>,
     saveMessage: (message: Message) => Promise<void>,
-    updateSessionTitle: (sessionId: string, title: string) => Promise<void>
+    updateSessionTitle: (sessionId: string, title: string) => Promise<void>,
+    accessToken: string
   ) => {
     setIsLoading(true);
     
@@ -336,7 +337,7 @@ export function useAuditWithSessions() {
       const response = await fetch(`${supabaseUrl}/functions/v1/audit-contract`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${supabaseAnonKey}`,
+          'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({

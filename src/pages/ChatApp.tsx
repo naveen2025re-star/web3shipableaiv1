@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 import Sidebar from '../components/Sidebar';
 import ChatHistory from '../components/ChatHistory';
 import CodeInput from '../components/CodeInput';
@@ -11,6 +12,7 @@ import { ChatSession } from '../hooks/useChatSessions';
 
 export default function ChatApp() {
   const navigate = useNavigate();
+  const { session } = useAuth();
   const {
     projects,
     currentProject,
@@ -132,6 +134,12 @@ export default function ChatApp() {
       return;
     }
 
+    if (!session?.access_token) {
+      console.error('No access token available');
+      alert('Authentication required. Please log in again.');
+      return;
+    }
+
     let sessionId = currentSessionId;
     
     if (!sessionId) {
@@ -148,7 +156,8 @@ export default function ChatApp() {
       setMessages,
       setIsLoading,
       saveMessage,
-      updateSessionTitle
+      updateSessionTitle,
+      session.access_token
     );
   };
 
