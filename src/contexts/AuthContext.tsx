@@ -108,13 +108,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => {
     try {
-      await supabase.auth.signOut();
+      const { error } = await supabase.auth.signOut();
+      
+      // If session doesn't exist on server, treat as successful logout
+      if (error && error.message?.includes('Session from session_id claim in JWT does not exist')) {
+        console.warn('Session already invalidated on server, proceeding with local logout');
+      } else if (error) {
+        console.error('Sign out error:', error);
+      }
     } catch (error) {
       console.error('Sign out error:', error);
-      // Force clear even if signOut fails
-      setSession(null);
-      setUser(null);
     }
+    
+    // Always clear local session state regardless of server response
+    setSession(null);
+    setUser(null);
   };
 
   const updateUserProfile = async (updates: Partial<UserProfile>) => {
