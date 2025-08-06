@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Plus, 
@@ -24,7 +24,6 @@ import {
 import { useProjects, Project } from '../hooks/useProjects';
 import { useAuth } from '../contexts/AuthContext';
 import ProjectModal from '../components/ProjectModal';
-import React, { useEffect } from 'react';
 
 export default function DashboardPage() {
   const navigate = useNavigate();

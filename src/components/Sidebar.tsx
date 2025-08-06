@@ -4,7 +4,6 @@ import { Plus, MessageSquare, Settings, LogOut, User, Trash2, Edit3, ArrowLeft, 
 import { useAuth } from '../contexts/AuthContext';
 import { ChatSession } from '../hooks/useChatSessions';
 import { Project } from '../hooks/useProjects';
-import React, { useState, useEffect } from 'react';
 
 interface SidebarProps {
   currentSessionId: string | null;
