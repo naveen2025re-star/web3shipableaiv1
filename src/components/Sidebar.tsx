@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, MessageSquare, Settings, LogOut, User, Trash2, Edit3, ArrowLeft, ChevronDown, FolderOpen } from 'lucide-react';
+import { Plus, MessageSquare, Settings, LogOut, User, Trash2, Edit3, ArrowLeft, ChevronDown, FolderOpen, Coins } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { ChatSession } from '../hooks/useChatSessions';
 import { Project } from '../hooks/useProjects';
@@ -28,11 +28,25 @@ export default function Sidebar({
   currentProject,
   onProjectSelect
 }: SidebarProps) {
-  const { user, signOut } = useAuth();
+  const { user, signOut, getUserProfile } = useAuth();
   const navigate = useNavigate();
   const [editingSession, setEditingSession] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [showProjectDropdown, setShowProjectDropdown] = useState(false);
+  const [userCredits, setUserCredits] = useState<number | null>(null);
+
+  // Load user credits
+  useEffect(() => {
+    const loadCredits = async () => {
+      if (user) {
+        const { data } = await getUserProfile();
+        if (data) {
+          setUserCredits(data.credits);
+        }
+      }
+    };
+    loadCredits();
+  }, [user, getUserProfile]);
 
   const deleteSession = (sessionId: string) => {
     onDeleteSession(sessionId);
@@ -265,6 +279,27 @@ export default function Sidebar({
 
       {/* User Profile & Settings */}
       <div className="border-t border-gray-700/30 p-6 bg-gradient-to-br from-slate-800/40 to-gray-900/40 backdrop-blur-sm">
+        {/* Credits Display */}
+        {userCredits !== null && (
+          <div className="mb-4 p-3 rounded-2xl bg-gradient-to-r from-yellow-500/20 to-orange-500/20 border border-yellow-500/30">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <div className="bg-gradient-to-br from-yellow-500 to-orange-500 p-2 rounded-xl shadow-lg">
+                  <Coins className="h-4 w-4 text-white" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-yellow-300">Credits</p>
+                  <p className="text-xs text-yellow-200/80">Available balance</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-lg font-black text-yellow-300">{userCredits}</p>
+                <p className="text-xs text-yellow-200/60">credits</p>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="flex items-center space-x-4 mb-4 p-3 rounded-2xl bg-slate-800/50 border border-gray-700/30">
           <div className="bg-gradient-to-br from-blue-600 to-purple-600 p-3 rounded-2xl shadow-xl">
             <User className="h-5 w-5" />

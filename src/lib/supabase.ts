@@ -47,24 +47,30 @@ export type Database = {
           email: string;
           full_name: string | null;
           avatar_url: string | null;
+          credits: number;
           created_at: string | null;
           updated_at: string | null;
+          github_pat: string | null;
         };
         Insert: {
           id: string;
           email: string;
           full_name?: string | null;
           avatar_url?: string | null;
+          credits?: number;
           created_at?: string | null;
           updated_at?: string | null;
+          github_pat?: string | null;
         };
         Update: {
           id?: string;
           email?: string;
           full_name?: string | null;
           avatar_url?: string | null;
+          credits?: number;
           created_at?: string | null;
           updated_at?: string | null;
+          github_pat?: string | null;
         };
       };
       chat_sessions: {

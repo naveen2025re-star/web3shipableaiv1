@@ -366,7 +366,29 @@ export function useAuditWithSessions() {
           errorData = { error: 'Failed to parse error response' };
         }
         
-        // Create more user-friendly error messages
+        // Handle insufficient credits error specifically
+        if (response.status === 402) {
+          let userMessage = '💳 **Insufficient Credits**\n\n';
+          userMessage += errorData.details || 'You do not have enough credits for this audit.';
+          
+          if (errorData.breakdown) {
+            userMessage += '\n\n**Cost Breakdown:**\n';
+            userMessage += `• Base scan: ${errorData.breakdown.baseCost} credits\n`;
+            userMessage += `• Lines of code: ${errorData.breakdown.linesOfCode} × 0.01 = ${errorData.breakdown.linesCost} credits\n`;
+            userMessage += `• Files: ${errorData.breakdown.numberOfFiles} × 0.5 = ${errorData.breakdown.filesCost} credits\n`;
+            userMessage += `• **Total: ${errorData.requiredCredits} credits**\n\n`;
+            userMessage += `You currently have ${errorData.availableCredits} credits available.`;
+          }
+          
+          userMessage += '\n\n💡 **How to get more credits:**\n';
+          userMessage += '• Contact support to purchase additional credits\n';
+          userMessage += '• Consider breaking large audits into smaller chunks\n';
+          userMessage += '• Remove unnecessary files or comments to reduce cost';
+          
+          throw new Error(userMessage);
+        }
+        
+        // Create more user-friendly error messages for other errors
         let userMessage = errorData.error || 'Failed to process audit request';
         
         if (errorData.suggestions && Array.isArray(errorData.suggestions)) {
@@ -419,11 +441,17 @@ export function useAuditWithSessions() {
       
       const { content, summary, findings } = parseAuditResponse(auditResult);
       
+      // Add credit usage information to the content
+      let finalContent = content;
+      if (data.creditsUsed && data.remainingCredits !== undefined) {
+        finalContent = `**Audit Complete** ✅\n\n**Credits Used:** ${data.creditsUsed} | **Remaining:** ${data.remainingCredits}\n\n---\n\n${content}`;
+      }
+      
       // Update with complete response
       const assistantMessage: Message = {
         id: assistantMessageId,
         type: 'assistant',
-        content: content,
+        content: finalContent,
         findings: findings,
         summary: summary,
         timestamp: new Date()
@@ -440,7 +468,7 @@ export function useAuditWithSessions() {
       const errorMessage: Message = {
         id: assistantMessageId,
         type: 'assistant',
-        content: `❌ **Audit Failed** - ${error instanceof Error ? error.message : 'Unknown error occurred'}. Please check your configuration and try again.`,
+        content: error instanceof Error ? error.message : `❌ **Audit Failed** - Unknown error occurred. Please check your configuration and try again.`,
         timestamp: new Date()
       };
       

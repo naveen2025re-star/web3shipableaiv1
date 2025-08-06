@@ -7,6 +7,7 @@ interface UserProfile {
   email: string;
   full_name: string | null;
   avatar_url: string | null;
+  credits: number;
   github_pat: string | null;
   created_at: string | null;
   updated_at: string | null;

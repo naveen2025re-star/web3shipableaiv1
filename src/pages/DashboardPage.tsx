@@ -18,7 +18,8 @@ import {
   Filter,
   Grid,
   List,
-  X
+  X,
+  Coins
 } from 'lucide-react';
 import { useProjects, Project } from '../hooks/useProjects';
 import { useAuth } from '../contexts/AuthContext';
@@ -26,7 +27,7 @@ import ProjectModal from '../components/ProjectModal';
 
 export default function DashboardPage() {
   const navigate = useNavigate();
-  const { user, signOut } = useAuth();
+  const { user, signOut, getUserProfile } = useAuth();
   const {
     projects,
     createProject,
@@ -43,6 +44,20 @@ export default function DashboardPage() {
   const [filterLanguage, setFilterLanguage] = useState('');
   const [filterBlockchain, setFilterBlockchain] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [userCredits, setUserCredits] = useState<number | null>(null);
+
+  // Load user credits
+  useEffect(() => {
+    const loadCredits = async () => {
+      if (user) {
+        const { data } = await getUserProfile();
+        if (data) {
+          setUserCredits(data.credits);
+        }
+      }
+    };
+    loadCredits();
+  }, [user, getUserProfile]);
 
   const handleCreateProject = () => {
     setProjectModalMode('create');
@@ -203,6 +218,18 @@ export default function DashboardPage() {
             <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
               <div className="flex items-center justify-between">
                 <div>
+                  <p className="text-sm font-medium text-gray-600">Available Credits</p>
+                  <p className="text-2xl font-bold text-gray-900">{userCredits ?? '...'}</p>
+                </div>
+                <div className="bg-yellow-100 rounded-xl p-3">
+                  <Coins className="h-6 w-6 text-yellow-600" />
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+              <div className="flex items-center justify-between">
+                <div>
                   <p className="text-sm font-medium text-gray-600">Total Projects</p>
                   <p className="text-2xl font-bold text-gray-900">{projects.length}</p>
                 </div>
@@ -232,20 +259,6 @@ export default function DashboardPage() {
                 </div>
                 <div className="bg-purple-100 rounded-xl p-3">
                   <TrendingUp className="h-6 w-6 text-purple-600" />
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Recent Activity</p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {projects.length > 0 ? 'Active' : 'None'}
-                  </p>
-                </div>
-                <div className="bg-orange-100 rounded-xl p-3">
-                  <Clock className="h-6 w-6 text-orange-600" />
                 </div>
               </div>
             </div>

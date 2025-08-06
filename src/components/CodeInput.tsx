@@ -1,6 +1,12 @@
 import React, { useState } from 'react';
-import { Shield, Plus, X, File, Send, XCircle, Upload, Sparkles, Zap, FolderOpen, Code, FileText, Layers, Wand2 } from 'lucide-react';
+import { Shield, Plus, X, File, Send, XCircle, Upload, Sparkles, Zap, FolderOpen, Code, FileText, Layers, Wand2, Coins, Calculator } from 'lucide-react';
 import FileManager from './FileManager';
+import { useAuth } from '../contexts/AuthContext';
+
+// Credit system constants (should match backend)
+const BASE_SCAN_COST = 1;
+const COST_PER_LINE = 0.01;
+const COST_PER_FILE = 0.5;
 
 interface CodeInputProps {
   onSubmit: (code: string, description: string) => void;
@@ -8,12 +14,55 @@ interface CodeInputProps {
 }
 
 export default function CodeInput({ onSubmit, isLoading }: CodeInputProps) {
+  const { getUserProfile } = useAuth();
   const [input, setInput] = useState('');
   const [uploadedFiles, setUploadedFiles] = useState<Array<{name: string, content: string}>>([]);
   const [showFileManager, setShowFileManager] = useState(false);
+  const [userCredits, setUserCredits] = useState<number | null>(null);
+  const [estimatedCost, setEstimatedCost] = useState<number>(0);
+
+  // Load user credits
+  React.useEffect(() => {
+    const loadCredits = async () => {
+      const { data } = await getUserProfile();
+      if (data) {
+        setUserCredits(data.credits);
+      }
+    };
+    loadCredits();
+  }, [getUserProfile]);
+
+  // Calculate estimated cost
+  React.useEffect(() => {
+    const calculateCost = () => {
+      let totalLines = 0;
+      let totalFiles = 0;
+
+      if (uploadedFiles.length > 0) {
+        totalFiles = uploadedFiles.length;
+        totalLines = uploadedFiles.reduce((acc, file) => {
+          return acc + file.content.split('\n').filter(line => line.trim().length > 0).length;
+        }, 0);
+      } else if (input.trim()) {
+        totalFiles = 1;
+        totalLines = input.split('\n').filter(line => line.trim().length > 0).length;
+      }
+
+      const cost = Math.ceil(BASE_SCAN_COST + (totalLines * COST_PER_LINE) + (totalFiles * COST_PER_FILE));
+      setEstimatedCost(cost);
+    };
+
+    calculateCost();
+  }, [input, uploadedFiles]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Check if user has sufficient credits
+    if (userCredits !== null && userCredits < estimatedCost) {
+      alert(`Insufficient credits! This audit requires ${estimatedCost} credits, but you only have ${userCredits} credits available.`);
+      return;
+    }
     
     // Combine uploaded files content with manual input
     let finalCode = '';
@@ -156,6 +205,23 @@ export default function CodeInput({ onSubmit, isLoading }: CodeInputProps) {
 
           {/* Main Input Area */}
           <div className="relative">
+            {/* Cost Estimation Display */}
+            {(input.trim() || uploadedFiles.length > 0) && (
+              <div className="absolute top-4 left-4 z-10">
+                <div className={`inline-flex items-center px-3 py-2 rounded-xl text-sm font-bold shadow-lg backdrop-blur-sm border transition-all duration-300 ${
+                  userCredits !== null && userCredits < estimatedCost
+                    ? 'bg-red-100/90 text-red-800 border-red-300'
+                    : 'bg-blue-100/90 text-blue-800 border-blue-300'
+                }`}>
+                  <Calculator className="h-4 w-4 mr-2" />
+                  <span>~{estimatedCost} credits</span>
+                  {userCredits !== null && userCredits < estimatedCost && (
+                    <span className="ml-2 text-red-600">⚠️ Insufficient</span>
+                  )}
+                </div>
+              </div>
+            )}
+
             <textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
@@ -164,7 +230,7 @@ export default function CodeInput({ onSubmit, isLoading }: CodeInputProps) {
                 ? "💡 Describe your smart contract or add additional context for more targeted analysis..." 
                 : "📝 Paste your smart contract code here, describe what you want to audit, or drag & drop files..."
               }
-              className="w-full px-8 py-6 pr-32 border-none outline-none resize-none rounded-3xl text-gray-900 placeholder-gray-500 min-h-[100px] max-h-[400px] text-lg leading-relaxed bg-transparent font-medium"
+              className="w-full px-8 py-12 pr-32 border-none outline-none resize-none rounded-3xl text-gray-900 placeholder-gray-500 min-h-[100px] max-h-[400px] text-lg leading-relaxed bg-transparent font-medium"
               style={{ 
                 height: 'auto',
                 minHeight: '100px'
@@ -204,8 +270,12 @@ export default function CodeInput({ onSubmit, isLoading }: CodeInputProps) {
               {/* Submit Button */}
               <button
                 type="submit"
-                disabled={(!input.trim() && uploadedFiles.length === 0) || isLoading}
-                className="group relative p-4 bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 hover:from-blue-700 hover:via-purple-700 hover:to-indigo-700 disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed text-white rounded-xl transition-all duration-500 shadow-xl hover:shadow-2xl transform hover:scale-110 disabled:transform-none disabled:opacity-50 overflow-hidden active:scale-95"
+                disabled={(!input.trim() && uploadedFiles.length === 0) || isLoading || (userCredits !== null && userCredits < estimatedCost)}
+                className={`group relative p-4 text-white rounded-xl transition-all duration-500 shadow-xl hover:shadow-2xl transform hover:scale-110 disabled:transform-none disabled:opacity-50 overflow-hidden active:scale-95 ${
+                  userCredits !== null && userCredits < estimatedCost
+                    ? 'bg-gradient-to-r from-red-500 to-red-600 cursor-not-allowed'
+                    : 'bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 hover:from-blue-700 hover:via-purple-700 hover:to-indigo-700 disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed'
+                }`}
               >
                 <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-purple-400 opacity-0 group-hover:opacity-20 transition-opacity duration-500"></div>
                 {isLoading ? (
@@ -213,6 +283,8 @@ export default function CodeInput({ onSubmit, isLoading }: CodeInputProps) {
                     <div className="animate-spin rounded-full h-6 w-6 border-2 border-white border-t-transparent mr-2"></div>
                     <Sparkles className="h-5 w-5" />
                   </div>
+                ) : userCredits !== null && userCredits < estimatedCost ? (
+                  <Coins className="h-6 w-6 relative z-10" />
                 ) : (
                   <Send className="h-6 w-6 group-hover:translate-x-1 transition-transform duration-300 relative z-10" />
                 )}
@@ -226,6 +298,14 @@ export default function CodeInput({ onSubmit, isLoading }: CodeInputProps) {
         <div className="mt-6 flex flex-col md:flex-row items-center justify-between text-sm text-gray-600 animate-slide-up space-y-4 md:space-y-0">
           <div className="flex flex-wrap items-center gap-6">
             <div className="flex items-center">
+              <div className="p-2 bg-gradient-to-r from-yellow-100 to-orange-100 rounded-lg mr-3 shadow-sm">
+                <Coins className="h-4 w-4 text-yellow-600" />
+              </div>
+              <span className="font-bold">
+                {userCredits !== null ? `${userCredits} credits available` : 'Loading credits...'}
+              </span>
+            </div>
+            <div className="flex items-center">
               <div className="p-2 bg-gradient-to-r from-green-100 to-green-200 rounded-lg mr-3 shadow-sm">
                 <Shield className="h-4 w-4 text-green-600" />
               </div>
@@ -237,12 +317,6 @@ export default function CodeInput({ onSubmit, isLoading }: CodeInputProps) {
               </div>
               <span className="font-bold">File management</span>
             </div>
-            <div className="flex items-center">
-              <div className="p-2 bg-gradient-to-r from-purple-100 to-pink-100 rounded-lg mr-3 shadow-sm">
-                <Sparkles className="h-4 w-4 text-purple-600" />
-              </div>
-              <span className="font-bold">AI-powered analysis</span>
-            </div>
           </div>
           <div className="flex items-center space-x-2">
             <kbd className="px-3 py-2 bg-gradient-to-r from-gray-100 to-gray-50 rounded-lg text-sm font-mono shadow-lg border border-gray-200/50">⌘</kbd>
@@ -250,6 +324,39 @@ export default function CodeInput({ onSubmit, isLoading }: CodeInputProps) {
             <span className="font-bold">to send</span>
           </div>
         </div>
+
+        {/* Credit Information */}
+        {estimatedCost > 0 && (
+          <div className="mt-4 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-2xl border border-blue-200/50 animate-slide-up">
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="text-sm font-bold text-gray-800 mb-1">Estimated Cost Breakdown</h4>
+                <div className="text-xs text-gray-600 space-y-1">
+                  <div>Base scan: {BASE_SCAN_COST} credit{BASE_SCAN_COST !== 1 ? 's' : ''}</div>
+                  {uploadedFiles.length > 0 ? (
+                    <>
+                      <div>Files: {uploadedFiles.length} × {COST_PER_FILE} = {Math.ceil(uploadedFiles.length * COST_PER_FILE)} credits</div>
+                      <div>Lines: ~{uploadedFiles.reduce((acc, file) => acc + file.content.split('\n').filter(line => line.trim().length > 0).length, 0)} × {COST_PER_LINE} = ~{Math.ceil(uploadedFiles.reduce((acc, file) => acc + file.content.split('\n').filter(line => line.trim().length > 0).length, 0) * COST_PER_LINE)} credits</div>
+                    </>
+                  ) : input.trim() ? (
+                    <>
+                      <div>Files: 1 × {COST_PER_FILE} = {COST_PER_FILE} credits</div>
+                      <div>Lines: ~{input.split('\n').filter(line => line.trim().length > 0).length} × {COST_PER_LINE} = ~{Math.ceil(input.split('\n').filter(line => line.trim().length > 0).length * COST_PER_LINE)} credits</div>
+                    </>
+                  ) : null}
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="text-lg font-bold text-blue-600">{estimatedCost} credits</div>
+                {userCredits !== null && (
+                  <div className="text-xs text-gray-500">
+                    {userCredits - estimatedCost} remaining
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </form>
 
       {/* File Manager Modal */}

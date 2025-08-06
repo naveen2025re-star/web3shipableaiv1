@@ -4,6 +4,11 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
 };
 
+// Credit system constants
+const BASE_SCAN_COST = 1;        // Base cost per scan
+const COST_PER_LINE = 0.01;      // Cost per line of code
+const COST_PER_FILE = 0.5;       // Cost per file
+
 interface AuditRequest {
   code: string;
   description?: string;
@@ -143,7 +148,36 @@ Deno.serve(async (req: Request) => {
         );
       }
 
-      const githubPat = profileData[0].github_pat;
+      const { github_pat: githubPat, credits: userCredits } = profileData[0];
+
+      // Calculate audit cost before fetching repository
+      const estimateLines = (text: string) => text.split('\n').filter(line => line.trim().length > 0).length;
+      const estimateFiles = (text: string) => {
+        const fileMarkers = (text.match(/\/\/ File:/g) || []).length;
+        return Math.max(fileMarkers, 1); // At least 1 file
+      };
+
+      // Rough estimation for GitHub repos (will be refined after fetching)
+      let estimatedCost = BASE_SCAN_COST + COST_PER_FILE; // Base + at least 1 file
+      if (code && code.trim()) {
+        estimatedCost += estimateLines(code) * COST_PER_LINE;
+      }
+
+      // Check if user has enough credits for basic estimation
+      if (userCredits < estimatedCost) {
+        return new Response(
+          JSON.stringify({ 
+            error: "Insufficient credits",
+            details: `This audit requires approximately ${Math.ceil(estimatedCost)} credits, but you only have ${userCredits} credits available.`,
+            requiredCredits: Math.ceil(estimatedCost),
+            availableCredits: userCredits
+          }),
+          {
+            status: 402,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
 
       // Fetch repository contents recursively
       const fetchRepoContents = async (path = ''): Promise<string> => {
@@ -261,6 +295,173 @@ Deno.serve(async (req: Request) => {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         }
       );
+    }
+
+    // Calculate final audit cost
+    const countLines = (text: string) => {
+      return text.split('\n').filter(line => line.trim().length > 0).length;
+    };
+
+    const countFiles = (text: string) => {
+      const fileMarkers = (text.match(/\/\/ File:/g) || []).length;
+      return Math.max(fileMarkers, 1); // At least 1 file
+    };
+
+    const linesOfCode = countLines(sanitizedCode);
+    const numberOfFiles = countFiles(sanitizedCode);
+    const auditCost = Math.ceil(BASE_SCAN_COST + (linesOfCode * COST_PER_LINE) + (numberOfFiles * COST_PER_FILE));
+
+    console.log(`Audit cost calculation: ${linesOfCode} lines, ${numberOfFiles} files, ${auditCost} credits`);
+
+    // Get user credits if not already fetched (for direct code input)
+    let userCredits = 0;
+    if (!githubRepo) {
+      // Get the authorization header to identify the user
+      const authHeader = req.headers.get('Authorization');
+      if (!authHeader) {
+        return new Response(
+          JSON.stringify({ error: "Missing authorization header" }),
+          {
+            status: 401,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+
+      const token = authHeader.replace('Bearer ', '');
+      
+      // Get Supabase environment variables
+      const supabaseUrl = Deno.env.get("SUPABASE_URL");
+      const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+      
+      if (!supabaseUrl || !supabaseServiceKey) {
+        return new Response(
+          JSON.stringify({ error: "Supabase configuration missing" }),
+          {
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+
+      // Verify JWT and get user
+      const jwtResponse = await fetch(`${supabaseUrl}/auth/v1/user`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'apikey': supabaseServiceKey,
+        },
+      });
+
+      if (!jwtResponse.ok) {
+        return new Response(
+          JSON.stringify({ error: "Invalid or expired token" }),
+          {
+            status: 401,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+
+      const userData = await jwtResponse.json();
+      const userId = userData.id;
+
+      // Fetch user's credits
+      const profileResponse = await fetch(`${supabaseUrl}/rest/v1/user_profiles?id=eq.${userId}&select=credits`, {
+        headers: {
+          'Authorization': `Bearer ${supabaseServiceKey}`,
+          'apikey': supabaseServiceKey,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!profileResponse.ok) {
+        return new Response(
+          JSON.stringify({ error: "Failed to fetch user profile" }),
+          {
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+
+      const profileData = await profileResponse.json();
+      
+      if (!profileData || profileData.length === 0) {
+        return new Response(
+          JSON.stringify({ error: "User profile not found" }),
+          {
+            status: 404,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+
+      userCredits = profileData[0].credits || 0;
+    }
+
+    // Check if user has sufficient credits
+    if (userCredits < auditCost) {
+      return new Response(
+        JSON.stringify({ 
+          error: "Insufficient credits",
+          details: `This audit requires ${auditCost} credits (${linesOfCode} lines × ${COST_PER_LINE} + ${numberOfFiles} files × ${COST_PER_FILE} + ${BASE_SCAN_COST} base cost), but you only have ${userCredits} credits available.`,
+          requiredCredits: auditCost,
+          availableCredits: userCredits,
+          breakdown: {
+            baseCost: BASE_SCAN_COST,
+            linesCost: Math.ceil(linesOfCode * COST_PER_LINE),
+            filesCost: Math.ceil(numberOfFiles * COST_PER_FILE),
+            linesOfCode,
+            numberOfFiles
+          }
+        }),
+        {
+          status: 402,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    // Deduct credits before making the API call
+    const authHeader = req.headers.get('Authorization');
+    const token = authHeader?.replace('Bearer ', '');
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+    if (token && supabaseUrl && supabaseServiceKey) {
+      try {
+        // Get user ID
+        const jwtResponse = await fetch(`${supabaseUrl}/auth/v1/user`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'apikey': supabaseServiceKey,
+          },
+        });
+
+        if (jwtResponse.ok) {
+          const userData = await jwtResponse.json();
+          const userId = userData.id;
+
+          // Deduct credits
+          const updateResponse = await fetch(`${supabaseUrl}/rest/v1/user_profiles?id=eq.${userId}`, {
+            method: 'PATCH',
+            headers: {
+              'Authorization': `Bearer ${supabaseServiceKey}`,
+              'apikey': supabaseServiceKey,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              credits: userCredits - auditCost
+            })
+          });
+
+          if (!updateResponse.ok) {
+            console.error('Failed to deduct credits:', await updateResponse.text());
+          }
+        }
+      } catch (error) {
+        console.error('Error deducting credits:', error);
+      }
     }
 
     // Function to escape markdown special characters in text fields only
@@ -426,11 +627,16 @@ ${sanitizedCode}`;
         JSON.stringify({
           success: true,
           audit: auditResult,
+          creditsUsed: auditCost,
+          remainingCredits: userCredits - auditCost,
           timestamp: new Date().toISOString(),
           metadata: {
             codeLength: sanitizedCode.length,
             estimatedTokens,
-            usage: completion.usage
+            usage: completion.usage,
+            linesOfCode,
+            numberOfFiles,
+            auditCost
           }
         }),
         {
