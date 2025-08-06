@@ -12,7 +12,7 @@ import { ChatSession } from '../hooks/useChatSessions';
 
 export default function ChatApp() {
   const navigate = useNavigate();
-  const { session } = useAuth();
+  const { session, getUserProfile } = useAuth();
   const {
     projects,
     currentProject,
@@ -147,7 +147,7 @@ export default function ChatApp() {
       if (!sessionId) return;
     }
     
-    await performAudit(
+    const auditResult = await performAudit(
       code,
       description,
       currentProject,
@@ -159,6 +159,12 @@ export default function ChatApp() {
       updateSessionTitle,
       session.access_token
     );
+    
+    // Refresh user profile to update credits display if audit was successful
+    if (auditResult?.success) {
+      // Trigger a refresh of user profile data
+      getUserProfile();
+    }
   };
 
   // Show loading state while projects are being loaded or project is being determined

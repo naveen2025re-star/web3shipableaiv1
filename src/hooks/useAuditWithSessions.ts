@@ -463,6 +463,13 @@ export function useAuditWithSessions() {
       ));
       await saveMessage(assistantMessage);
       
+      // Return credit information for UI updates
+      return {
+        success: true,
+        creditsUsed: data.creditsUsed,
+        remainingCredits: data.remainingCredits
+      };
+      
     } catch (error) {
       console.error('Audit error:', error);
       
@@ -480,6 +487,8 @@ export function useAuditWithSessions() {
     } finally {
       setIsLoading(false);
     }
+    
+    return null;
   };
 
   return {

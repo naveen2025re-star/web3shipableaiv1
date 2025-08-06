@@ -46,6 +46,11 @@ export default function Sidebar({
       }
     };
     loadCredits();
+    
+    // Set up interval to refresh credits periodically
+    const interval = setInterval(loadCredits, 30000); // Refresh every 30 seconds
+    
+    return () => clearInterval(interval);
   }, [user, getUserProfile]);
 
   const deleteSession = (sessionId: string) => {
