@@ -503,20 +503,19 @@ Deno.serve(async (req: Request) => {
     // Check for API key
     const apiKey = Deno.env.get("SHIPABLE_AI_API_KEY");
     
-    // Debug logging for API key availability
-    console.log("Environment variables check:", {
+    // Debug logging for API key availability (without exposing the key)
+    console.log("API key check:", {
       hasShipableKey: !!apiKey,
       keyLength: apiKey ? apiKey.length : 0,
-      allEnvKeys: Object.keys(Deno.env.toObject()).filter(key => key.includes('SHIPABLE') || key.includes('API'))
+      keyPrefix: apiKey ? apiKey.substring(0, 8) + "..." : "none"
     });
     
     if (!apiKey) {
       console.error("SHIPABLE_AI_API_KEY not found in environment");
-      console.error("Available environment variables:", Object.keys(Deno.env.toObject()));
       return new Response(
         JSON.stringify({ 
           error: "Configuration error",
-          details: "API key not configured - check Supabase Edge Function secrets"
+          details: "Shipable AI API key not configured. Please check Supabase Edge Function secrets."
         }),
         {
           status: 500,
@@ -560,7 +559,7 @@ ${sanitizedCode}`;
           "Authorization": `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
-          model: "claude-3-7-sonnet-latest",
+          model: "o3-mini",
           messages: [
             { "role": "user", "content": userMessage }
           ]
