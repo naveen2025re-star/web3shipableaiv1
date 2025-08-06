@@ -84,7 +84,7 @@ export default function CodeInput({ onSubmit, isLoading }: CodeInputProps) {
     <div className="max-w-5xl mx-auto animate-fade-in">
       {/* Enhanced Header */}
       <div className="text-center mb-8">
-        <div className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-100/80 to-purple-100/80 backdrop-blur-sm text-blue-800 rounded-full text-sm font-bold mb-6 border border-blue-200/50 shadow-xl animate-scale-in hover:scale-105 transition-all duration-300">
+        <div className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-100/80 to-purple-100/80 backdrop-blur-sm text-blue-800 rounded-full text-sm font-bold mb-6 border border-blue-200/50 shadow-xl animate-scale-in hover:scale-105 transition-all duration-300 cursor-default">
           <Wand2 className="h-5 w-5 mr-2" />
           AI-Powered Security Analysis Engine
         </div>
@@ -184,7 +184,7 @@ export default function CodeInput({ onSubmit, isLoading }: CodeInputProps) {
                 <button
                   type="button"
                   onClick={clearInput}
-                  className="p-3 hover:bg-gray-100/80 rounded-xl cursor-pointer transition-all duration-300 hover:scale-110 bg-white/80 backdrop-blur-sm shadow-lg border border-gray-200/50"
+                  className="p-3 hover:bg-gray-100/80 rounded-xl cursor-pointer transition-all duration-300 hover:scale-110 bg-white/80 backdrop-blur-sm shadow-lg border border-gray-200/50 active:scale-95"
                   title="Clear input"
                 >
                   <XCircle className="h-5 w-5 text-gray-400 hover:text-gray-600" />
@@ -195,7 +195,7 @@ export default function CodeInput({ onSubmit, isLoading }: CodeInputProps) {
               <button
                 type="button"
                 onClick={() => setShowFileManager(true)}
-                className="p-3 hover:bg-blue-50/80 rounded-xl transition-all duration-300 hover:scale-110 group bg-white/80 backdrop-blur-sm shadow-lg border border-gray-200/50"
+                className="p-3 hover:bg-blue-50/80 rounded-xl transition-all duration-300 hover:scale-110 group bg-white/80 backdrop-blur-sm shadow-lg border border-gray-200/50 active:scale-95"
                 title="Open File Manager"
               >
                 <FolderOpen className="h-5 w-5 text-gray-600 group-hover:text-blue-600" />
@@ -205,7 +205,7 @@ export default function CodeInput({ onSubmit, isLoading }: CodeInputProps) {
               <button
                 type="submit"
                 disabled={(!input.trim() && uploadedFiles.length === 0) || isLoading}
-                className="group relative p-4 bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 hover:from-blue-700 hover:via-purple-700 hover:to-indigo-700 disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed text-white rounded-xl transition-all duration-500 shadow-xl hover:shadow-2xl transform hover:scale-110 disabled:transform-none disabled:opacity-50 overflow-hidden"
+                className="group relative p-4 bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 hover:from-blue-700 hover:via-purple-700 hover:to-indigo-700 disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed text-white rounded-xl transition-all duration-500 shadow-xl hover:shadow-2xl transform hover:scale-110 disabled:transform-none disabled:opacity-50 overflow-hidden active:scale-95"
               >
                 <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-purple-400 opacity-0 group-hover:opacity-20 transition-opacity duration-500"></div>
                 {isLoading ? (

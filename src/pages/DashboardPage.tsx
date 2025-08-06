@@ -316,7 +316,7 @@ export default function DashboardPage() {
               {/* Create Project Button */}
               <button
                 onClick={handleCreateProject}
-                className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-200 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-200 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 whitespace-nowrap"
               >
                 <Plus className="h-5 w-5 mr-2" />
                 New Project
@@ -327,7 +327,7 @@ export default function DashboardPage() {
           {/* Projects Grid/List */}
           {filteredProjects.length === 0 ? (
             <div className="text-center py-16">
-              <div className="bg-gray-100 rounded-full p-6 w-20 h-20 mx-auto mb-6 flex items-center justify-center">
+              <div className="bg-gradient-to-br from-gray-100 to-gray-200 rounded-full p-6 w-20 h-20 mx-auto mb-6 flex items-center justify-center shadow-lg">
                 <FolderOpen className="h-10 w-10 text-gray-400" />
               </div>
               <h3 className="text-xl font-semibold text-gray-900 mb-2">
@@ -342,7 +342,7 @@ export default function DashboardPage() {
               {projects.length === 0 && (
                 <button
                   onClick={handleCreateProject}
-                  className="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-semibold"
+                  className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-200 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
                 >
                   <Plus className="h-5 w-5 mr-2" />
                   Create Your First Project
@@ -360,7 +360,7 @@ export default function DashboardPage() {
                   className={`group bg-white rounded-2xl border border-gray-200 hover:border-blue-200 hover:shadow-xl transition-all duration-300 overflow-hidden ${
                     viewMode === 'list' ? 'flex items-center p-6' : 'p-6'
                   }`}
-                 onClick={() => handleProjectSelect(project)}
+                  onClick={() => handleProjectSelect(project)}
                 >
                   <div className={`${viewMode === 'list' ? 'flex-1' : ''}`}>
                     <div className={`flex items-start justify-between ${viewMode === 'list' ? 'items-center' : 'mb-4'}`}>
@@ -381,13 +381,13 @@ export default function DashboardPage() {
                       </div>
 
                       {/* Action Buttons */}
-                      <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-all duration-300">
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
                             handleEditProject(project);
                           }}
-                          className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                          className="p-2 hover:bg-blue-50 hover:text-blue-600 rounded-lg transition-all duration-200"
                           title="Edit project"
                         >
                           <Edit3 className="h-4 w-4 text-gray-600" />
@@ -397,10 +397,10 @@ export default function DashboardPage() {
                             e.stopPropagation();
                             handleDeleteProject(project);
                           }}
-                          className="p-2 hover:bg-red-50 rounded-lg transition-colors"
+                          className="p-2 hover:bg-red-50 hover:text-red-600 rounded-lg transition-all duration-200"
                           title="Delete project"
                         >
-                          <Trash2 className="h-4 w-4 text-red-600" />
+                          <Trash2 className="h-4 w-4 text-gray-600" />
                         </button>
                       </div>
                     </div>
@@ -426,7 +426,7 @@ export default function DashboardPage() {
 
                     {/* Open Project Button */}
                     <div
-                      className={`w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-200 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center justify-center cursor-pointer ${
+                      className={`w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-1 hover:scale-[1.02] flex items-center justify-center cursor-pointer ${
                         viewMode === 'list' ? 'px-6 py-2 ml-4' : 'px-4 py-3 mt-4'
                       }`}
                     >

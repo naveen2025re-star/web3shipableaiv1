@@ -484,7 +484,7 @@ END OF REPORT
                     <div className="flex items-center space-x-2">
                     <button
                       onClick={copyContent}
-                      className="p-2 hover:bg-gray-100/80 rounded-xl transition-all duration-300 hover:scale-110 shadow-lg"
+                      className="p-2 hover:bg-gray-100/80 rounded-xl transition-all duration-300 hover:scale-110 shadow-lg active:scale-95"
                       title="Copy report"
                     >
                       {copied ? (
@@ -496,7 +496,7 @@ END OF REPORT
                     {summary && (
                       <button
                         onClick={exportReport}
-                        className="relative p-2 hover:bg-gray-100/80 rounded-xl transition-all duration-300 hover:scale-110 shadow-lg"
+                        className="relative p-2 hover:bg-gray-100/80 rounded-xl transition-all duration-300 hover:scale-110 shadow-lg active:scale-95"
                         title="Export report"
                       >
                         <Download className="h-4 w-4 text-gray-600" />
@@ -504,7 +504,7 @@ END OF REPORT
                     )}
                     <button
                       onClick={() => setIsExpanded(!isExpanded)}
-                      className="p-2 hover:bg-gray-100/80 rounded-xl transition-all duration-300 hover:scale-110 shadow-lg"
+                      className="p-2 hover:bg-gray-100/80 rounded-xl transition-all duration-300 hover:scale-110 shadow-lg active:scale-95"
                       title={isExpanded ? "Collapse" : "Expand"}
                     >
                       {isExpanded ? (

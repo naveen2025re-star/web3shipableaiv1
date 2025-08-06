@@ -260,11 +260,11 @@ export default function FileManager({ onFilesSelected, onClose }: FileManagerPro
         />
         <label
           htmlFor="file-upload"
-          className={`inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white ${
+          className={`inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white transition-all duration-200 ${
             uploading 
-              ? 'bg-gray-400 cursor-not-allowed' 
-              : 'bg-blue-600 hover:bg-blue-700 cursor-pointer'
-          } transition-colors`}
+              ? 'bg-gray-400 cursor-not-allowed opacity-50' 
+              : 'bg-blue-600 hover:bg-blue-700 cursor-pointer hover:scale-105 active:scale-95 shadow-lg hover:shadow-xl'
+          }`}
         >
           {uploading ? (
             <>
@@ -328,7 +328,7 @@ export default function FileManager({ onFilesSelected, onClose }: FileManagerPro
                     type="checkbox"
                     checked={selectedFiles.has(file.id)}
                     onChange={() => toggleFileSelection(file.id)}
-                    className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+                    className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2 transition-all duration-200"
                   />
                   {getFileIcon(file.name)}
                   <div className="flex-1 min-w-0">
@@ -348,7 +348,7 @@ export default function FileManager({ onFilesSelected, onClose }: FileManagerPro
                 <div className="flex items-center space-x-2">
                   <button
                     onClick={() => handleFileDelete(file)}
-                    className="p-1 text-red-600 hover:bg-red-50 rounded transition-colors"
+                    className="p-1 text-red-600 hover:bg-red-50 rounded transition-all duration-200 hover:scale-110 active:scale-95"
                     title="Delete file"
                   >
                     <Trash2 className="h-3 w-3" />
@@ -370,14 +370,14 @@ export default function FileManager({ onFilesSelected, onClose }: FileManagerPro
         )}
         <button
           onClick={onClose}
-          className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+          className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50 transition-all duration-200 hover:scale-105 active:scale-95"
         >
           Cancel
         </button>
         <button
           onClick={handleFilesSelect}
           disabled={selectedFiles.size === 0}
-          className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
+          className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:scale-105 active:scale-95 disabled:transform-none flex items-center space-x-2 shadow-lg hover:shadow-xl"
         >
           <Eye className="h-4 w-4" />
           <span>Use Selected Files ({selectedFiles.size})</span>

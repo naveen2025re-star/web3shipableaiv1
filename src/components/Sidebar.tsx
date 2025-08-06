@@ -100,7 +100,7 @@ export default function Sidebar({
         {/* Back to Dashboard */}
         <button
           onClick={() => navigate('/dashboard')}
-          className="flex items-center space-x-3 text-gray-300 hover:text-white mb-6 text-sm font-medium transition-all duration-300 hover:bg-slate-800/60 px-3 py-2 rounded-xl group"
+          className="flex items-center space-x-3 text-gray-300 hover:text-white mb-6 text-sm font-medium transition-all duration-300 hover:bg-slate-800/60 px-3 py-2 rounded-xl group w-full"
         >
           <ArrowLeft className="h-4 w-4 group-hover:-translate-x-1 transition-transform duration-300" />
           <span>Back to Dashboard</span>
@@ -175,7 +175,7 @@ export default function Sidebar({
         {/* New Chat Button */}
         <button
           onClick={onNewChat}
-          className="w-full flex items-center justify-center space-x-3 bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 hover:from-blue-700 hover:via-purple-700 hover:to-indigo-700 text-white px-5 py-4 rounded-2xl transition-all duration-300 font-bold shadow-xl hover:shadow-2xl transform hover:-translate-y-1 hover:scale-[1.02] group"
+          className="w-full flex items-center justify-center space-x-3 bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 hover:from-blue-700 hover:via-purple-700 hover:to-indigo-700 text-white px-5 py-4 rounded-2xl transition-all duration-300 font-bold shadow-xl hover:shadow-2xl transform hover:-translate-y-1 hover:scale-[1.02] group active:scale-[0.98]"
         >
           <Plus className="h-5 w-5 group-hover:rotate-90 transition-transform duration-300" />
           <span>New Chat</span>
@@ -241,7 +241,7 @@ export default function Sidebar({
                       e.stopPropagation();
                       startEditing(session);
                     }}
-                    className="p-2 hover:bg-slate-700/60 rounded-xl text-gray-400 hover:text-white transition-all duration-300 hover:scale-110 shadow-lg"
+                    className="p-2 hover:bg-slate-700/60 rounded-xl text-gray-400 hover:text-blue-400 transition-all duration-300 hover:scale-110 shadow-lg"
                     title="Rename"
                   >
                     <Edit3 className="h-4 w-4" />
@@ -269,7 +269,7 @@ export default function Sidebar({
           <div className="bg-gradient-to-br from-blue-600 to-purple-600 p-3 rounded-2xl shadow-xl">
             <User className="h-5 w-5" />
           </div>
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 overflow-hidden">
             <p className="text-sm font-bold truncate">
               {user?.user_metadata?.full_name || user?.email || 'User'}
             </p>
@@ -284,7 +284,7 @@ export default function Sidebar({
           </button>
           <button
             onClick={signOut}
-            className="w-full flex items-center space-x-3 text-gray-300 hover:text-red-400 hover:bg-red-500/20 px-4 py-3 rounded-xl transition-all duration-300 text-sm font-medium group"
+            className="w-full flex items-center space-x-3 text-gray-300 hover:text-red-400 hover:bg-red-500/20 px-4 py-3 rounded-xl transition-all duration-300 text-sm font-medium group active:scale-[0.98]"
           >
             <LogOut className="h-5 w-5 group-hover:-translate-x-1 transition-transform duration-300" />
             <span>Sign Out</span>
