@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Shield, Plus, X, File, Send, XCircle, Upload, Sparkles, Zap, FolderOpen, Code, FileText, Layers, Wand2, Coins, Calculator } from 'lucide-react';
 import FileManager from './FileManager';
 import { useAuth } from '../contexts/AuthContext';
@@ -335,13 +335,13 @@ export default function CodeInput({ onSubmit, isLoading }: CodeInputProps) {
                   <div>Base scan: {BASE_SCAN_COST} credit{BASE_SCAN_COST !== 1 ? 's' : ''}</div>
                   {uploadedFiles.length > 0 ? (
                     <>
-                      <div>Files: {uploadedFiles.length} × {COST_PER_FILE} = {Math.ceil(uploadedFiles.length * COST_PER_FILE)} credits</div>
-                      <div>Lines: ~{uploadedFiles.reduce((acc, file) => acc + file.content.split('\n').filter(line => line.trim().length > 0).length, 0)} × {COST_PER_LINE} = ~{Math.ceil(uploadedFiles.reduce((acc, file) => acc + file.content.split('\n').filter(line => line.trim().length > 0).length, 0) * COST_PER_LINE)} credits</div>
+                      <div>Files: {uploadedFiles.length} × {COST_PER_FILE} = {(uploadedFiles.length * COST_PER_FILE).toFixed(2)} credits</div>
+                      <div>Lines: ~{uploadedFiles.reduce((acc, file) => acc + file.content.split('\n').filter(line => line.trim().length > 0).length, 0)} × {COST_PER_LINE} = ~{(uploadedFiles.reduce((acc, file) => acc + file.content.split('\n').filter(line => line.trim().length > 0).length, 0) * COST_PER_LINE).toFixed(2)} credits</div>
                     </>
                   ) : input.trim() ? (
                     <>
                       <div>Files: 1 × {COST_PER_FILE} = {COST_PER_FILE} credits</div>
-                      <div>Lines: ~{input.split('\n').filter(line => line.trim().length > 0).length} × {COST_PER_LINE} = ~{Math.ceil(input.split('\n').filter(line => line.trim().length > 0).length * COST_PER_LINE)} credits</div>
+                      <div>Lines: ~{input.split('\n').filter(line => line.trim().length > 0).length} × {COST_PER_LINE} = ~{(input.split('\n').filter(line => line.trim().length > 0).length * COST_PER_LINE).toFixed(2)} credits</div>
                     </>
                   ) : null}
                 </div>
@@ -350,7 +350,7 @@ export default function CodeInput({ onSubmit, isLoading }: CodeInputProps) {
                 <div className="text-lg font-bold text-blue-600">{estimatedCost} credits</div>
                 {userCredits !== null && (
                   <div className="text-xs text-gray-500">
-                    {userCredits - estimatedCost} remaining
+                    {Math.max(0, userCredits - estimatedCost)} remaining
                   </div>
                 )}
               </div>
